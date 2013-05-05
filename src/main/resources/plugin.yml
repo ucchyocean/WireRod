@@ -1,0 +1,19 @@
+name: WireRod
+main: com.github.ucchyocean.WireRod
+version: 1.1.0
+author: ucchy
+description: WireRod is the magic battle item.
+commands:
+  wirerod:
+    description: WireRod is the magic battle item.
+    aliases: [wi,wr]
+    usage: |
+           /<command> get [level] - Get new WireRod.
+           /<command> give (player) [level] - Give new WireRod.
+    permission: wirerod
+    permission-message: You don't have permission "<permission>".
+permissions:
+  wirerod:
+    description: WireRod permission.
+    default: true
+    
