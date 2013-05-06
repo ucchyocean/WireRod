@@ -10,15 +10,19 @@ import java.util.ArrayList;
 import org.bukkit.ChatColor;
 import org.bukkit.Effect;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fish;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.player.PlayerFishEvent;
+import org.bukkit.event.player.PlayerFishEvent.State;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -45,6 +49,7 @@ public class WireRod extends JavaPlugin implements Listener {
     private static final int MAX_LEVEL = 20;
 
     private ItemStack item;
+    //private HashMap<Player, Location> hookLocation;
 
     /**
      * プラグインが有効になったときに呼び出されるメソッド
@@ -52,6 +57,7 @@ public class WireRod extends JavaPlugin implements Listener {
      */
     public void onEnable(){
 
+        //hookLocation = new HashMap<Player, Location>();
         getServer().getPluginManager().registerEvents(this, this);
 
         item = new ItemStack(Material.FISHING_ROD, 1);
@@ -137,23 +143,24 @@ public class WireRod extends JavaPlugin implements Listener {
     }
 
     /**
-     * Wirerodの針がかかったときに呼び出されるメソッド
+     * Wirerodの針を投げたり、針がかかったときに呼び出されるメソッド
      * @param event
      */
     @EventHandler
-    public void onHook(ProjectileHitEvent event) {
+    public void onHook(PlayerFishEvent event) {
 
-        if ( event.getEntityType() != EntityType.FISHING_HOOK ) {
-            return;
-        }
-
-        Fish fish = (Fish)event.getEntity();
-        Player player = (Player)fish.getShooter();
+        Player player = event.getPlayer();
+        Fish hook = event.getHook();
 
         if ( player.getItemInHand() == null ||
                 player.getItemInHand().getType() == Material.AIR ||
                 player.getItemInHand().getItemMeta().getDisplayName() == null ||
                 !player.getItemInHand().getItemMeta().getDisplayName().equals(DISPLAY_NAME) ) {
+            return;
+        }
+
+        if ( event.getState() != State.CAUGHT_ENTITY &&
+                event.getState() != State.IN_GROUND ) {
             return;
         }
 
@@ -168,11 +175,39 @@ public class WireRod extends JavaPlugin implements Listener {
         takeExperience(player, DEFAULT_COST);
         rod.setDurability((short)0);
 
-        Vector vector = player.getLocation().subtract(fish.getLocation()).getDirection().normalize();
+        // 針がかかった場所に向かって飛び出す
+        Vector vector = player.getLocation().subtract(hook.getLocation()).getDirection().normalize();
         player.setVelocity(vector.multiply(level/2));
         player.setFallDistance(-1000F);
         player.playEffect(player.getEyeLocation().add(0.5D, 0.0D, 0.5D), Effect.POTION_BREAK, 22);
         player.playEffect(player.getEyeLocation().add(0.5D, 0.0D, 0.5D), Effect.POTION_BREAK, 22);
+    }
+
+    /**
+     * Wirerodの針が、地面やブロック、MOBに刺さったときに呼び出されるメソッド
+     * @param event
+     */
+    @EventHandler
+    public void onHit(ProjectileHitEvent event) {
+
+        Projectile projectile = event.getEntity();
+        LivingEntity shooter = projectile.getShooter();
+
+        if ( shooter == null || !(shooter instanceof Player) ) {
+            return;
+        }
+
+        Player player = (Player)shooter;
+
+        if ( player.getItemInHand() == null ||
+                player.getItemInHand().getType() == Material.AIR ||
+                player.getItemInHand().getItemMeta().getDisplayName() == null ||
+                !player.getItemInHand().getItemMeta().getDisplayName().equals(DISPLAY_NAME) ) {
+            return;
+        }
+
+        // 音を出す
+        player.playSound(player.getEyeLocation(), Sound.ARROW_HIT, 1, (float)0.5);
     }
 
     /**
