@@ -9,6 +9,7 @@ import java.util.ArrayList;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Effect;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.command.Command;
@@ -164,8 +165,13 @@ public class WireRod extends JavaPlugin implements Listener {
             return;
         }
 
+        Location eLoc = player.getEyeLocation().add(0.5D, 0.0D, 0.5D);
+
         if ( !hasExperience(player, DEFAULT_COST) ) {
             player.sendMessage(ChatColor.RED + "no fuel!!");
+            player.playEffect(eLoc, Effect.SMOKE, 0);
+            player.playEffect(eLoc, Effect.SMOKE, 0);
+            player.playSound(eLoc, Sound.IRONGOLEM_THROW, (float)1.0, (float)1.5);
             return;
         }
 
@@ -179,8 +185,8 @@ public class WireRod extends JavaPlugin implements Listener {
         Vector vector = player.getLocation().subtract(hook.getLocation()).getDirection().normalize();
         player.setVelocity(vector.multiply(level/2));
         player.setFallDistance(-1000F);
-        player.playEffect(player.getEyeLocation().add(0.5D, 0.0D, 0.5D), Effect.POTION_BREAK, 22);
-        player.playEffect(player.getEyeLocation().add(0.5D, 0.0D, 0.5D), Effect.POTION_BREAK, 22);
+        player.playEffect(eLoc, Effect.POTION_BREAK, 22);
+        player.playEffect(eLoc, Effect.POTION_BREAK, 22);
     }
 
     /**
