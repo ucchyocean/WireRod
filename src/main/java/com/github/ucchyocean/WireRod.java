@@ -5,8 +5,6 @@
  */
 package com.github.ucchyocean;
 
-import java.util.ArrayList;
-
 import org.bukkit.ChatColor;
 import org.bukkit.Effect;
 import org.bukkit.Location;
@@ -27,6 +25,7 @@ import org.bukkit.event.player.PlayerFishEvent.State;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 /**
@@ -38,19 +37,13 @@ public class WireRod extends JavaPlugin implements Listener {
     private static final String NAME = "wirerod";
     private static final String DISPLAY_NAME =
             ChatColor.BLUE.toString() + ChatColor.BOLD.toString() + NAME;
-    private static final ArrayList<String> LORE;
-    static {
-        LORE = new ArrayList<String>();
-        LORE.add("飛びたい目標にフックを投げると、フックがかかった場所に");
-        LORE.add("向かって飛ぶことが出来る。飛べる回数は有限で、EXPバーで");
-        LORE.add("残り燃料を確認することが出来る。");
-    }
     private static final int DEFAULT_LEVEL = 4;
     private static final int DEFAULT_COST = 10;
     private static final int MAX_LEVEL = 20;
+    private static final int REVIVE_SECONDS = 5;
+    private static final int REVIVE_AMOUNT = 30;
 
     private ItemStack item;
-    //private HashMap<Player, Location> hookLocation;
 
     /**
      * プラグインが有効になったときに呼び出されるメソッド
@@ -58,13 +51,11 @@ public class WireRod extends JavaPlugin implements Listener {
      */
     public void onEnable(){
 
-        //hookLocation = new HashMap<Player, Location>();
         getServer().getPluginManager().registerEvents(this, this);
 
         item = new ItemStack(Material.FISHING_ROD, 1);
         ItemMeta wirerodMeta = item.getItemMeta();
         wirerodMeta.setDisplayName(DISPLAY_NAME);
-        wirerodMeta.setLore(LORE);
         item.setItemMeta(wirerodMeta);
     }
 
@@ -150,8 +141,8 @@ public class WireRod extends JavaPlugin implements Listener {
     @EventHandler
     public void onHook(PlayerFishEvent event) {
 
-        Player player = event.getPlayer();
-        Fish hook = event.getHook();
+        final Player player = event.getPlayer();
+        final Fish hook = event.getHook();
 
         if ( player.getItemInHand() == null ||
                 player.getItemInHand().getType() == Material.AIR ||
@@ -165,12 +156,12 @@ public class WireRod extends JavaPlugin implements Listener {
             return;
         }
 
-        Location eLoc = player.getEyeLocation().add(0.5D, 0.0D, 0.5D);
+        Location eLoc = player.getEyeLocation();
 
         if ( !hasExperience(player, DEFAULT_COST) ) {
             player.sendMessage(ChatColor.RED + "no fuel!!");
-            player.playEffect(eLoc, Effect.SMOKE, 0);
-            player.playEffect(eLoc, Effect.SMOKE, 0);
+            player.playEffect(eLoc, Effect.SMOKE, 4);
+            player.playEffect(eLoc, Effect.SMOKE, 4);
             player.playSound(eLoc, Sound.IRONGOLEM_THROW, (float)1.0, (float)1.5);
             return;
         }
@@ -180,6 +171,16 @@ public class WireRod extends JavaPlugin implements Listener {
 
         takeExperience(player, DEFAULT_COST);
         rod.setDurability((short)0);
+
+        if ( !hasExperience(player, DEFAULT_COST) ) {
+            BukkitRunnable runnable = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    takeExperience(player, -REVIVE_AMOUNT);
+                }
+            };
+            runnable.runTaskLater(this, REVIVE_SECONDS * 20);
+        }
 
         // 針がかかった場所に向かって飛び出す
         Vector vector = player.getLocation().subtract(hook.getLocation()).getDirection().normalize();
