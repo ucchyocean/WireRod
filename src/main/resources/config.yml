@@ -1,0 +1,11 @@
+# Wire Rod v1.1.5
+# @author     ucchy
+# @license    GPLv3
+# @copyright  Copyright ucchy 2013
+
+defaultLevel: 4
+cost: 10
+speed: 3
+revive: true
+reviveSeconds: 5
+reviveAmount: 30

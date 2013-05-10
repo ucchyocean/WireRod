@@ -12,6 +12,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Fish;
 import org.bukkit.entity.LivingEntity;
@@ -42,8 +43,17 @@ public class WireRod extends JavaPlugin implements Listener {
     private static final int MAX_LEVEL = 20;
     private static final int REVIVE_SECONDS = 5;
     private static final int REVIVE_AMOUNT = 30;
+    private static final int HOOK_LAUNCH_SPEED = 3;
 
     private ItemStack item;
+
+    private int level;
+    private int cost;
+    private int speed;
+    private boolean revive;
+    private int reviveSeconds;
+    private int reviveAmount;
+
 
     /**
      * プラグインが有効になったときに呼び出されるメソッド
@@ -51,12 +61,31 @@ public class WireRod extends JavaPlugin implements Listener {
      */
     public void onEnable(){
 
+        saveDefaultConfig();
+        loadConfigDatas();
+
         getServer().getPluginManager().registerEvents(this, this);
 
         item = new ItemStack(Material.FISHING_ROD, 1);
         ItemMeta wirerodMeta = item.getItemMeta();
         wirerodMeta.setDisplayName(DISPLAY_NAME);
         item.setItemMeta(wirerodMeta);
+    }
+
+    /**
+     * 設定情報の読み込み処理
+     */
+    private void loadConfigDatas() {
+
+        FileConfiguration config = getConfig();
+        level = config.getInt("defaultLevel", DEFAULT_LEVEL);
+        cost = config.getInt("cost", DEFAULT_COST);
+        speed = config.getInt("speed", HOOK_LAUNCH_SPEED);
+        revive = config.getBoolean("revive", true);
+        if ( revive ) {
+            reviveSeconds = config.getInt("reviveSeconds", REVIVE_SECONDS);
+            reviveAmount = config.getInt("reviveAmount", REVIVE_AMOUNT);
+        }
     }
 
     /**
@@ -80,7 +109,7 @@ public class WireRod extends JavaPlugin implements Listener {
 
             Player player = (Player)sender;
 
-            int level = DEFAULT_LEVEL;
+            int level = this.level;
             if ( args.length >= 2 && args[1].matches("^[0-9]+$") ) {
                 level = Integer.parseInt(args[1]);
             }
@@ -97,7 +126,7 @@ public class WireRod extends JavaPlugin implements Listener {
                 return true;
             }
 
-            int level = DEFAULT_LEVEL;
+            int level = this.level;
             if ( args.length >= 3 && args[2].matches("^[0-9]+$") ) {
                 level = Integer.parseInt(args[2]);
             }
@@ -151,43 +180,55 @@ public class WireRod extends JavaPlugin implements Listener {
             return;
         }
 
-        if ( event.getState() != State.CAUGHT_ENTITY &&
-                event.getState() != State.IN_GROUND ) {
-            return;
+        if ( event.getState() == State.FISHING ) {
+            // 針を投げるときの処理
+
+            // 針の速度を上げる
+            hook.setVelocity(hook.getVelocity().multiply(speed));
+
+        } else if ( event.getState() == State.CAUGHT_ENTITY ||
+                event.getState() == State.IN_GROUND ) {
+            // 針をひっぱるときの処理
+
+            Location eLoc = player.getEyeLocation();
+
+            if ( !hasExperience(player, cost) ) {
+                player.sendMessage(ChatColor.RED + "no fuel!!");
+                player.playEffect(eLoc, Effect.SMOKE, 4);
+                player.playEffect(eLoc, Effect.SMOKE, 4);
+                player.playSound(eLoc, Sound.IRONGOLEM_THROW, (float)1.0, (float)1.5);
+                return;
+            }
+
+            ItemStack rod = player.getItemInHand();
+            double level = (double)rod.getEnchantmentLevel(Enchantment.OXYGEN);
+
+            takeExperience(player, cost);
+            rod.setDurability((short)0);
+
+            if ( revive && !hasExperience(player, cost) ) {
+                BukkitRunnable runnable = new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        takeExperience(player, -reviveAmount);
+                    }
+                };
+                runnable.runTaskLater(this, reviveSeconds * 20);
+                player.sendMessage(ChatColor.GOLD + "your fuel will revive after " + reviveSeconds + " seconds.");
+            }
+
+            // 針がかかった場所に向かって飛び出す
+            Location loc1 = hook.getLocation();
+            Location loc2 = player.getLocation();
+            Vector vector = new Vector(
+                    loc1.getX()-loc2.getX(),
+                    loc1.getY()-loc2.getY(),
+                    loc1.getZ()-loc2.getZ());
+            player.setVelocity(vector.normalize().multiply(level/2));
+            player.setFallDistance(-1000F);
+            player.playEffect(eLoc, Effect.POTION_BREAK, 22);
+            player.playEffect(eLoc, Effect.POTION_BREAK, 22);
         }
-
-        Location eLoc = player.getEyeLocation();
-
-        if ( !hasExperience(player, DEFAULT_COST) ) {
-            player.sendMessage(ChatColor.RED + "no fuel!!");
-            player.playEffect(eLoc, Effect.SMOKE, 4);
-            player.playEffect(eLoc, Effect.SMOKE, 4);
-            player.playSound(eLoc, Sound.IRONGOLEM_THROW, (float)1.0, (float)1.5);
-            return;
-        }
-
-        ItemStack rod = player.getItemInHand();
-        double level = (double)rod.getEnchantmentLevel(Enchantment.OXYGEN);
-
-        takeExperience(player, DEFAULT_COST);
-        rod.setDurability((short)0);
-
-        if ( !hasExperience(player, DEFAULT_COST) ) {
-            BukkitRunnable runnable = new BukkitRunnable() {
-                @Override
-                public void run() {
-                    takeExperience(player, -REVIVE_AMOUNT);
-                }
-            };
-            runnable.runTaskLater(this, REVIVE_SECONDS * 20);
-        }
-
-        // 針がかかった場所に向かって飛び出す
-        Vector vector = player.getLocation().subtract(hook.getLocation()).getDirection().normalize();
-        player.setVelocity(vector.multiply(level/2));
-        player.setFallDistance(-1000F);
-        player.playEffect(eLoc, Effect.POTION_BREAK, 22);
-        player.playEffect(eLoc, Effect.POTION_BREAK, 22);
     }
 
     /**
