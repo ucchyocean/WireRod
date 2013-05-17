@@ -1,6 +1,6 @@
 name: WireRod
 main: com.github.ucchyocean.WireRod
-version: 1.1.5
+version: 1.1.6
 author: ucchy
 description: WireRod is the magic battle item.
 commands:
@@ -15,5 +15,5 @@ commands:
 permissions:
   wirerod:
     description: WireRod permission.
-    default: true
+    default: op
     

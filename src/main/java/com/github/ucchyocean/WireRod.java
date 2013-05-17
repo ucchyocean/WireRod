@@ -190,8 +190,16 @@ public class WireRod extends JavaPlugin implements Listener {
                 event.getState() == State.IN_GROUND ) {
             // 針をひっぱるときの処理
 
+            // ひっかかっているのは自分なら、2ダメージ(1ハート)を与える
+            if ( event.getCaught() != null &&
+                    event.getCaught().equals(player) ) {
+                player.damage(2);
+                return;
+            }
+
             Location eLoc = player.getEyeLocation();
 
+            // 経験値が不足している場合は、燃料切れとして終了する
             if ( !hasExperience(player, cost) ) {
                 player.sendMessage(ChatColor.RED + "no fuel!!");
                 player.playEffect(eLoc, Effect.SMOKE, 4);
@@ -200,12 +208,15 @@ public class WireRod extends JavaPlugin implements Listener {
                 return;
             }
 
+            // ロッドと、そのレベルを取得
             ItemStack rod = player.getItemInHand();
             double level = (double)rod.getEnchantmentLevel(Enchantment.OXYGEN);
 
+            // 経験値を消費する、耐久値を0に戻す
             takeExperience(player, cost);
             rod.setDurability((short)0);
 
+            // もし今回の操作で燃料切れになった場合は、指定秒後に復活させる
             if ( revive && !hasExperience(player, cost) ) {
                 BukkitRunnable runnable = new BukkitRunnable() {
                     @Override
@@ -217,13 +228,12 @@ public class WireRod extends JavaPlugin implements Listener {
                 player.sendMessage(ChatColor.GOLD + "your fuel will revive after " + reviveSeconds + " seconds.");
             }
 
-            // 針がかかった場所に向かって飛び出す
+            // 飛翔
             Location loc1 = hook.getLocation();
-            Location loc2 = player.getLocation();
             Vector vector = new Vector(
-                    loc1.getX()-loc2.getX(),
-                    loc1.getY()-loc2.getY(),
-                    loc1.getZ()-loc2.getZ());
+                    loc1.getX()-eLoc.getX(),
+                    loc1.getY()-eLoc.getY(),
+                    loc1.getZ()-eLoc.getZ());
             player.setVelocity(vector.normalize().multiply(level/2));
             player.setFallDistance(-1000F);
             player.playEffect(eLoc, Effect.POTION_BREAK, 22);
