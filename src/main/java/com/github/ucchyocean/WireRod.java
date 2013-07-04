@@ -232,7 +232,7 @@ public class WireRod extends JavaPlugin implements Listener {
             // ひっかかっているのは自分なら、2ダメージ(1ハート)を与える
             if ( event.getCaught() != null &&
                     event.getCaught().equals(player) ) {
-                player.damage(2F);
+                player.damage(2F, player);
                 return;
             }
 
