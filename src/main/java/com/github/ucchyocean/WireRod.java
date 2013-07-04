@@ -14,8 +14,8 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fish;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
@@ -25,6 +25,8 @@ import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerFishEvent.State;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.metadata.MetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
@@ -35,6 +37,7 @@ import org.bukkit.util.Vector;
  */
 public class WireRod extends JavaPlugin implements Listener {
 
+
     private static final String NAME = "wirerod";
     private static final String DISPLAY_NAME =
             ChatColor.BLUE.toString() + ChatColor.BOLD.toString() + NAME;
@@ -44,16 +47,18 @@ public class WireRod extends JavaPlugin implements Listener {
     private static final int REVIVE_SECONDS = 5;
     private static final int REVIVE_AMOUNT = 30;
     private static final int HOOK_LAUNCH_SPEED = 3;
+    private static final boolean DEFAULT_RAISE_BASE = false;
+    private static final boolean DEFAULT_REVIVE = true;
 
     private ItemStack item;
 
-    private int level;
-    private int cost;
-    private int speed;
-    private boolean revive;
-    private int reviveSeconds;
-    private int reviveAmount;
-
+    private int configLevel;
+    private int configCost;
+    private double configSpeed;
+    private boolean configRaiseBase;
+    private boolean configRevive;
+    private int configReviveSeconds;
+    private int configReviveAmount;
 
     /**
      * プラグインが有効になったときに呼び出されるメソッド
@@ -78,13 +83,14 @@ public class WireRod extends JavaPlugin implements Listener {
     private void loadConfigDatas() {
 
         FileConfiguration config = getConfig();
-        level = config.getInt("defaultLevel", DEFAULT_LEVEL);
-        cost = config.getInt("cost", DEFAULT_COST);
-        speed = config.getInt("speed", HOOK_LAUNCH_SPEED);
-        revive = config.getBoolean("revive", true);
-        if ( revive ) {
-            reviveSeconds = config.getInt("reviveSeconds", REVIVE_SECONDS);
-            reviveAmount = config.getInt("reviveAmount", REVIVE_AMOUNT);
+        configLevel = config.getInt("defaultLevel", DEFAULT_LEVEL);
+        configCost = config.getInt("cost", DEFAULT_COST);
+        configSpeed = config.getDouble("speed", HOOK_LAUNCH_SPEED);
+        configRaiseBase = config.getBoolean("raiseBase", DEFAULT_RAISE_BASE);
+        configRevive = config.getBoolean("revive", DEFAULT_REVIVE);
+        if (configRevive) {
+            configReviveSeconds = config.getInt("reviveSeconds", REVIVE_SECONDS);
+            configReviveAmount = config.getInt("reviveAmount", REVIVE_AMOUNT);
         }
     }
 
@@ -100,16 +106,37 @@ public class WireRod extends JavaPlugin implements Listener {
             return false;
         }
 
-        if ( args[0].equalsIgnoreCase("get") ) {
+        if (args[0].equalsIgnoreCase("reload")) {
+
+            if (!sender.hasPermission("wirerod.reload")) {
+                sender.sendMessage(ChatColor.RED
+                        + "You don't have permission \"wirerod.reload\".");
+                return true;
+            }
+
+            // コンフィグ再読込
+            this.reloadConfig();
+            this.loadConfigDatas();
+            sender.sendMessage(ChatColor.GREEN + "WireRod configuration was reloaded!");
+
+            return true;
+
+        } else if (args[0].equalsIgnoreCase("get")) {
 
             if ( !(sender instanceof Player) ) {
                 sender.sendMessage(ChatColor.RED + "This command can only use in game.");
                 return true;
             }
 
+            if (!sender.hasPermission("wirerod.get")) {
+                sender.sendMessage(ChatColor.RED
+                        + "You don't have permission \"wirerod.get\".");
+                return true;
+            }
+
             Player player = (Player)sender;
 
-            int level = this.level;
+            int level = configLevel;
             if ( args.length >= 2 && args[1].matches("^[0-9]+$") ) {
                 level = Integer.parseInt(args[1]);
             }
@@ -120,13 +147,19 @@ public class WireRod extends JavaPlugin implements Listener {
 
         } else if ( args.length >= 2 && args[0].equalsIgnoreCase("give") ) {
 
+            if (!sender.hasPermission("wirerod.give")) {
+                sender.sendMessage(ChatColor.RED
+                        + "You don't have permission \"wirerod.give\".");
+                return true;
+            }
+
             Player player = getServer().getPlayerExact(args[1]);
             if ( player == null ) {
                 sender.sendMessage(ChatColor.RED + "Player " + args[1] + " was not found.");
                 return true;
             }
 
-            int level = this.level;
+            int level = configLevel;
             if ( args.length >= 3 && args[2].matches("^[0-9]+$") ) {
                 level = Integer.parseInt(args[2]);
             }
@@ -173,9 +206,11 @@ public class WireRod extends JavaPlugin implements Listener {
         final Player player = event.getPlayer();
         final Fish hook = event.getHook();
 
+        if ( !player.hasPermission("wirerod.action") ) return;
+
         if ( player.getItemInHand() == null ||
                 player.getItemInHand().getType() == Material.AIR ||
-                player.getItemInHand().getItemMeta().getDisplayName() == null ||
+                !player.getItemInHand().getItemMeta().hasDisplayName() ||
                 !player.getItemInHand().getItemMeta().getDisplayName().equals(DISPLAY_NAME) ) {
             return;
         }
@@ -184,7 +219,11 @@ public class WireRod extends JavaPlugin implements Listener {
             // 針を投げるときの処理
 
             // 針の速度を上げる
-            hook.setVelocity(hook.getVelocity().multiply(speed));
+            hook.setVelocity(hook.getVelocity().multiply(configSpeed));
+
+            // 針にメタデータを仕込む
+            MetadataValue value = new FixedMetadataValue(this, true);
+            hook.setMetadata(NAME, value);
 
         } else if ( event.getState() == State.CAUGHT_ENTITY ||
                 event.getState() == State.IN_GROUND ) {
@@ -193,14 +232,14 @@ public class WireRod extends JavaPlugin implements Listener {
             // ひっかかっているのは自分なら、2ダメージ(1ハート)を与える
             if ( event.getCaught() != null &&
                     event.getCaught().equals(player) ) {
-                player.damage(2);
+                player.damage(2F);
                 return;
             }
 
             Location eLoc = player.getEyeLocation();
 
             // 経験値が不足している場合は、燃料切れとして終了する
-            if ( !hasExperience(player, cost) ) {
+            if ( !hasExperience(player, configCost) ) {
                 player.sendMessage(ChatColor.RED + "no fuel!!");
                 player.playEffect(eLoc, Effect.SMOKE, 4);
                 player.playEffect(eLoc, Effect.SMOKE, 4);
@@ -213,27 +252,34 @@ public class WireRod extends JavaPlugin implements Listener {
             double level = (double)rod.getEnchantmentLevel(Enchantment.OXYGEN);
 
             // 経験値を消費する、耐久値を0に戻す
-            takeExperience(player, cost);
+            takeExperience(player, configCost);
             rod.setDurability((short)0);
 
             // もし今回の操作で燃料切れになった場合は、指定秒後に復活させる
-            if ( revive && !hasExperience(player, cost) ) {
+            if ( configRevive && !hasExperience(player, configCost) ) {
                 BukkitRunnable runnable = new BukkitRunnable() {
                     @Override
                     public void run() {
-                        takeExperience(player, -reviveAmount);
+                        takeExperience(player, -configReviveAmount);
                     }
                 };
-                runnable.runTaskLater(this, reviveSeconds * 20);
-                player.sendMessage(ChatColor.GOLD + "your fuel will revive after " + reviveSeconds + " seconds.");
+                runnable.runTaskLater(this, configReviveSeconds * 20);
+                player.sendMessage(ChatColor.GOLD +
+                        "your fuel will revive after " + configReviveSeconds + " seconds.");
             }
 
             // 飛翔
-            Location loc1 = hook.getLocation();
+            Location hookLoc = hook.getLocation();
+            Location baseLoc;
+            if ( configRaiseBase ) {
+                baseLoc = eLoc;
+            } else {
+                baseLoc = player.getLocation();
+            }
             Vector vector = new Vector(
-                    loc1.getX()-eLoc.getX(),
-                    loc1.getY()-eLoc.getY(),
-                    loc1.getZ()-eLoc.getZ());
+                    hookLoc.getX()-baseLoc.getX(),
+                    hookLoc.getY()-baseLoc.getY(),
+                    hookLoc.getZ()-baseLoc.getZ());
             player.setVelocity(vector.normalize().multiply(level/2));
             player.setFallDistance(-1000F);
             player.playEffect(eLoc, Effect.POTION_BREAK, 22);
@@ -249,22 +295,24 @@ public class WireRod extends JavaPlugin implements Listener {
     public void onHit(ProjectileHitEvent event) {
 
         Projectile projectile = event.getEntity();
-        LivingEntity shooter = projectile.getShooter();
 
-        if ( shooter == null || !(shooter instanceof Player) ) {
+        // プレイヤーが投げたものでないなら無視
+        if ( !(projectile.getShooter() instanceof Player) ) {
             return;
         }
 
-        Player player = (Player)shooter;
+        // 釣り針でなければ無視
+        if ( projectile.getType() != EntityType.FISHING_HOOK ) {
+            return;
+        }
 
-        if ( player.getItemInHand() == null ||
-                player.getItemInHand().getType() == Material.AIR ||
-                player.getItemInHand().getItemMeta().getDisplayName() == null ||
-                !player.getItemInHand().getItemMeta().getDisplayName().equals(DISPLAY_NAME) ) {
+        // メタデータを確認して、wirerodの針かどうか確認する
+        if ( !projectile.hasMetadata(NAME) ) {
             return;
         }
 
         // 音を出す
+        Player player = (Player)projectile.getShooter();
         player.playSound(player.getEyeLocation(), Sound.ARROW_HIT, 1, (float)0.5);
     }
 

@@ -1,6 +1,6 @@
 name: WireRod
 main: com.github.ucchyocean.WireRod
-version: 1.1.6
+version: 1.2.0
 author: ucchy
 description: WireRod is the magic battle item.
 commands:
@@ -10,10 +10,30 @@ commands:
     usage: |
            /<command> get [level] - Get new WireRod.
            /<command> give (player) [level] - Give new WireRod.
-    permission: wirerod
+           /<command> reload - Reload config.yml.
+    permission: wirerod.command
     permission-message: You don't have permission "<permission>".
 permissions:
-  wirerod:
-    description: WireRod permission.
+  wirerod.command:
+    description: WireRod command permission.
+    default: true
+  wirerod.reload:
+    description: WireRod reload command permission.
     default: op
-    
+  wirerod.get:
+    description: WireRod get command permission.
+    default: true
+  wirerod.give:
+    description: WireRod give command permission.
+    default: op
+  wirerod.action:
+    description: WireRod action permission.
+    default: true
+  wirerod.*:
+    children:
+      wirerod.command: true
+      wirerod.reload: true
+      wirerod.get: true
+      wirerod.give: true
+      wirerod.action: true
+    description: All of WireRod permission.
