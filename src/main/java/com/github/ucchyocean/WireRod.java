@@ -1,6 +1,6 @@
 /*
  * @author     ucchy
- * @license    GPLv3
+ * @license    LGPLv3
  * @copyright  Copyright ucchy 2013
  */
 package com.github.ucchyocean;
@@ -14,6 +14,8 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Arrow;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fish;
 import org.bukkit.entity.Player;
@@ -27,13 +29,14 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 /**
- * @author ucchy
  * ワイヤロッドプラグイン
+ * @author ucchy
  */
 public class WireRod extends JavaPlugin implements Listener {
 
@@ -46,16 +49,12 @@ public class WireRod extends JavaPlugin implements Listener {
     private static final int MAX_LEVEL = 20;
     private static final int REVIVE_SECONDS = 5;
     private static final int REVIVE_AMOUNT = 30;
-    private static final int HOOK_LAUNCH_SPEED = 3;
-    private static final boolean DEFAULT_RAISE_BASE = false;
     private static final boolean DEFAULT_REVIVE = true;
 
     private ItemStack item;
 
     private int configLevel;
     private int configCost;
-    private double configSpeed;
-    private boolean configRaiseBase;
     private boolean configRevive;
     private int configReviveSeconds;
     private int configReviveAmount;
@@ -75,6 +74,21 @@ public class WireRod extends JavaPlugin implements Listener {
         ItemMeta wirerodMeta = item.getItemMeta();
         wirerodMeta.setDisplayName(DISPLAY_NAME);
         item.setItemMeta(wirerodMeta);
+
+        // ColorTeaming のロード
+        Plugin colorteaming = null;
+        if ( getServer().getPluginManager().isPluginEnabled("ColorTeaming") ) {
+            colorteaming = getServer().getPluginManager().getPlugin("ColorTeaming");
+            String ctversion = colorteaming.getDescription().getVersion();
+            if ( isUpperVersion(ctversion, "2.2.0") ) {
+                getLogger().info("ColorTeaming がロードされました。連携機能を有効にします。");
+                ColorTeamingBridge bridge = new ColorTeamingBridge(colorteaming);
+                bridge.registerItem(item, NAME, DISPLAY_NAME);
+            } else {
+                getLogger().warning("ColorTeaming のバージョンが古いため、連携機能は無効になりました。");
+                getLogger().warning("連携機能を使用するには、ColorTeaming v2.2.0 以上が必要です。");
+            }
+        }
     }
 
     /**
@@ -85,8 +99,6 @@ public class WireRod extends JavaPlugin implements Listener {
         FileConfiguration config = getConfig();
         configLevel = config.getInt("defaultLevel", DEFAULT_LEVEL);
         configCost = config.getInt("cost", DEFAULT_COST);
-        configSpeed = config.getDouble("speed", HOOK_LAUNCH_SPEED);
-        configRaiseBase = config.getBoolean("raiseBase", DEFAULT_RAISE_BASE);
         configRevive = config.getBoolean("revive", DEFAULT_REVIVE);
         if (configRevive) {
             configReviveSeconds = config.getInt("reviveSeconds", REVIVE_SECONDS);
@@ -218,12 +230,14 @@ public class WireRod extends JavaPlugin implements Listener {
         if ( event.getState() == State.FISHING ) {
             // 針を投げるときの処理
 
-            // 針の速度を上げる
-            hook.setVelocity(hook.getVelocity().multiply(configSpeed));
+            // 向いている方向に矢を発射し、矢にフックを乗せる、矢を加速
+            Arrow arrow = player.launchProjectile(Arrow.class);
+            arrow.setPassenger(hook);
+            arrow.setVelocity(arrow.getVelocity().multiply(3.0));
 
-            // 針にメタデータを仕込む
+            // 矢にメタデータを仕込む
             MetadataValue value = new FixedMetadataValue(this, true);
-            hook.setMetadata(NAME, value);
+            arrow.setMetadata(NAME, value);
 
         } else if ( event.getState() == State.CAUGHT_ENTITY ||
                 event.getState() == State.IN_GROUND ) {
@@ -241,15 +255,18 @@ public class WireRod extends JavaPlugin implements Listener {
             // 経験値が不足している場合は、燃料切れとして終了する
             if ( !hasExperience(player, configCost) ) {
                 player.sendMessage(ChatColor.RED + "no fuel!!");
-                player.playEffect(eLoc, Effect.SMOKE, 4);
-                player.playEffect(eLoc, Effect.SMOKE, 4);
+                player.getWorld().playEffect(eLoc, Effect.SMOKE, 4);
+                player.getWorld().playEffect(eLoc, Effect.SMOKE, 4);
                 player.playSound(eLoc, Sound.IRONGOLEM_THROW, (float)1.0, (float)1.5);
                 return;
             }
 
             // ロッドと、そのレベルを取得
             ItemStack rod = player.getItemInHand();
-            double level = (double)rod.getEnchantmentLevel(Enchantment.OXYGEN);
+            double level = configLevel;
+            if ( rod.containsEnchantment(Enchantment.OXYGEN) ) {
+                level = (double)rod.getEnchantmentLevel(Enchantment.OXYGEN);
+            }
 
             // 経験値を消費する、耐久値を0に戻す
             takeExperience(player, configCost);
@@ -270,20 +287,15 @@ public class WireRod extends JavaPlugin implements Listener {
 
             // 飛翔
             Location hookLoc = hook.getLocation();
-            Location baseLoc;
-            if ( configRaiseBase ) {
-                baseLoc = eLoc;
-            } else {
-                baseLoc = player.getLocation();
-            }
+            Location baseLoc = player.getLocation();
             Vector vector = new Vector(
                     hookLoc.getX()-baseLoc.getX(),
                     hookLoc.getY()-baseLoc.getY(),
                     hookLoc.getZ()-baseLoc.getZ());
             player.setVelocity(vector.normalize().multiply(level/2));
             player.setFallDistance(-1000F);
-            player.playEffect(eLoc, Effect.POTION_BREAK, 22);
-            player.playEffect(eLoc, Effect.POTION_BREAK, 22);
+            player.getWorld().playEffect(eLoc, Effect.POTION_BREAK, 22);
+            player.getWorld().playEffect(eLoc, Effect.POTION_BREAK, 22);
         }
     }
 
@@ -301,8 +313,8 @@ public class WireRod extends JavaPlugin implements Listener {
             return;
         }
 
-        // 釣り針でなければ無視
-        if ( projectile.getType() != EntityType.FISHING_HOOK ) {
+        // 矢でなければ無視
+        if ( projectile.getType() != EntityType.ARROW ) {
             return;
         }
 
@@ -311,9 +323,14 @@ public class WireRod extends JavaPlugin implements Listener {
             return;
         }
 
-        // 音を出す
-        Player player = (Player)projectile.getShooter();
-        player.playSound(player.getEyeLocation(), Sound.ARROW_HIT, 1, (float)0.5);
+        // 矢からフックを降ろし、矢を消去
+        Vector velocity = projectile.getVelocity();
+        Entity passenger = projectile.getPassenger();
+        projectile.remove();
+        if ( passenger != null ) {
+            passenger.leaveVehicle();
+            passenger.setVelocity(velocity);
+        }
     }
 
     /**
@@ -361,5 +378,46 @@ public class WireRod extends JavaPlugin implements Listener {
         }
         float xp = (float)total / (float)player.getExpToLevel();
         player.setExp(xp);
+    }
+
+    /**
+     * 指定されたバージョンが、基準より新しいバージョンかどうかを確認する<br>
+     * 完全一致した場合もtrueになることに注意。
+     * @param version 確認するバージョン
+     * @param border 基準のバージョン
+     * @return 基準より確認対象の方が新しいバージョンかどうか
+     */
+    private boolean isUpperVersion(String version, String border) {
+
+        String[] versionArray = version.split("\\.");
+        int[] versionNumbers = new int[versionArray.length];
+        for ( int i=0; i<versionArray.length; i++ ) {
+            if ( !versionArray[i].matches("[0-9]+") )
+                return false;
+            versionNumbers[i] = Integer.parseInt(versionArray[i]);
+        }
+
+        String[] borderArray = border.split("\\.");
+        int[] borderNumbers = new int[borderArray.length];
+        for ( int i=0; i<borderArray.length; i++ ) {
+            if ( !borderArray[i].matches("[0-9]+") )
+                return false;
+            borderNumbers[i] = Integer.parseInt(borderArray[i]);
+        }
+
+        int index = 0;
+        while ( (versionNumbers.length > index) && (borderNumbers.length > index) ) {
+            if ( versionNumbers[index] > borderNumbers[index] ) {
+                return true;
+            } else if ( versionNumbers[index] < borderNumbers[index] ) {
+                return false;
+            }
+            index++;
+        }
+        if ( borderNumbers.length == index ) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }
