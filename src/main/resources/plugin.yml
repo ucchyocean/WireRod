@@ -1,12 +1,12 @@
-name: WireRod
+name: ${project.name}
 main: com.github.ucchyocean.WireRod
-version: 2.0.0
+version: ${project.version}
 author: ucchy
-description: WireRod is the magic battle item.
+description: ${project.description}
 softdepend: [ColorTeaming]
 commands:
   wirerod:
-    description: WireRod is the magic battle item.
+    description: ${project.description}
     aliases: [wi,wr]
     usage: |
            /<command> get [level] - Get new WireRod.

@@ -2,14 +2,21 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.github.ucchyocean</groupId>
   <artifactId>WireRod</artifactId>
-  <version>2.0.0</version>
-
+  <version>2.1.0</version>
+  <description>Shooter is the magic battle item.</description>
+  
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
   <build>
     <finalName>${project.artifactId}</finalName>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -39,12 +46,12 @@
     <dependency>
       <groupId>org.bukkit</groupId>
       <artifactId>craftbukkit</artifactId>
-      <version>1.6.4-R0.1-SNAPSHOT</version>
+      <version>1.7.2-R0.3-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>com.github.ucchyocean</groupId>
       <artifactId>ColorTeaming</artifactId>
-      <version>2.2.6</version>
+      <version>2.2.11</version>
     </dependency>
   </dependencies>
 </project>

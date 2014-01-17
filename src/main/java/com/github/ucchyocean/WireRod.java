@@ -10,28 +10,23 @@ import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.Arrow;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fish;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerFishEvent.State;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.metadata.FixedMetadataValue;
-import org.bukkit.metadata.MetadataValue;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.BlockIterator;
 import org.bukkit.util.Vector;
 
 /**
@@ -39,7 +34,6 @@ import org.bukkit.util.Vector;
  * @author ucchy
  */
 public class WireRod extends JavaPlugin implements Listener {
-
 
     private static final String NAME = "wirerod";
     private static final String DISPLAY_NAME =
@@ -51,6 +45,8 @@ public class WireRod extends JavaPlugin implements Listener {
     private static final int REVIVE_AMOUNT = 30;
     private static final boolean DEFAULT_REVIVE = true;
 
+    protected static WireRod instance;
+    
     private ItemStack item;
 
     private int configLevel;
@@ -65,6 +61,8 @@ public class WireRod extends JavaPlugin implements Listener {
      */
     public void onEnable(){
 
+        instance = this;
+        
         saveDefaultConfig();
         loadConfigDatas();
 
@@ -80,13 +78,13 @@ public class WireRod extends JavaPlugin implements Listener {
         if ( getServer().getPluginManager().isPluginEnabled("ColorTeaming") ) {
             colorteaming = getServer().getPluginManager().getPlugin("ColorTeaming");
             String ctversion = colorteaming.getDescription().getVersion();
-            if ( isUpperVersion(ctversion, "2.2.0") ) {
-                getLogger().info("ColorTeaming がロードされました。連携機能を有効にします。");
+            if ( isUpperVersion(ctversion, "2.2.5") ) {
+                getLogger().info("ColorTeaming was loaded. BattlePoints was in cooperation with ColorTeaming.");
                 ColorTeamingBridge bridge = new ColorTeamingBridge(colorteaming);
                 bridge.registerItem(item, NAME, DISPLAY_NAME);
             } else {
-                getLogger().warning("ColorTeaming のバージョンが古いため、連携機能は無効になりました。");
-                getLogger().warning("連携機能を使用するには、ColorTeaming v2.2.0 以上が必要です。");
+                getLogger().warning("ColorTeaming was too old. The cooperation feature will be disabled.");
+                getLogger().warning("NOTE: Please use ColorTeaming v2.2.5 or later version.");
             }
         }
     }
@@ -230,17 +228,22 @@ public class WireRod extends JavaPlugin implements Listener {
         if ( event.getState() == State.FISHING ) {
             // 針を投げるときの処理
 
-            // 向いている方向に矢を発射し、矢にフックを乗せる、矢を加速
-            Arrow arrow = player.launchProjectile(Arrow.class);
-            arrow.setPassenger(hook);
-            arrow.setVelocity(arrow.getVelocity().multiply(3.0));
+            // 向いている方向のブロックを取得し、その中にフックをワープさせる
+            Block target = getTargetBlock(player, 30);
+            if ( target == null || target.getType() == Material.AIR ) {
+                event.setCancelled(true);
+                return;
+            }
+            Location loc = target.getLocation();
+            loc.add(0.5, 0.5, 0.5);
+            hook.teleport(loc);
 
-            // 矢にメタデータを仕込む
-            MetadataValue value = new FixedMetadataValue(this, true);
-            arrow.setMetadata(NAME, value);
+            // 刺さったブロックにエフェクトを発生させる
+            hook.getWorld().playEffect(hook.getLocation(), Effect.STEP_SOUND, 8);
 
         } else if ( event.getState() == State.CAUGHT_ENTITY ||
-                event.getState() == State.IN_GROUND ) {
+                event.getState() == State.IN_GROUND || 
+                event.getState() == State.FAILED_ATTEMPT ) {
             // 針をひっぱるときの処理
 
             // ひっかかっているのは自分なら、2ダメージ(1ハート)を与える
@@ -296,40 +299,6 @@ public class WireRod extends JavaPlugin implements Listener {
             player.setFallDistance(-1000F);
             player.getWorld().playEffect(eLoc, Effect.POTION_BREAK, 22);
             player.getWorld().playEffect(eLoc, Effect.POTION_BREAK, 22);
-        }
-    }
-
-    /**
-     * Wirerodの針が、地面やブロック、MOBに刺さったときに呼び出されるメソッド
-     * @param event
-     */
-    @EventHandler
-    public void onHit(ProjectileHitEvent event) {
-
-        Projectile projectile = event.getEntity();
-
-        // プレイヤーが投げたものでないなら無視
-        if ( !(projectile.getShooter() instanceof Player) ) {
-            return;
-        }
-
-        // 矢でなければ無視
-        if ( projectile.getType() != EntityType.ARROW ) {
-            return;
-        }
-
-        // メタデータを確認して、wirerodの針かどうか確認する
-        if ( !projectile.hasMetadata(NAME) ) {
-            return;
-        }
-
-        // 矢からフックを降ろし、矢を消去
-        Vector velocity = projectile.getVelocity();
-        Entity passenger = projectile.getPassenger();
-        projectile.remove();
-        if ( passenger != null ) {
-            passenger.leaveVehicle();
-            passenger.setVelocity(velocity);
         }
     }
 
@@ -419,5 +388,23 @@ public class WireRod extends JavaPlugin implements Listener {
         } else {
             return false;
         }
+    }
+    
+    /**
+     * プレイヤーが向いている方向にあるブロックを取得する。
+     * @param player プレイヤー
+     * @param size 取得する最大距離、140以上を指定しないこと
+     * @return プレイヤーが向いている方向にあるブロック、取得できない場合はnullがかえされる
+     */
+    public static Block getTargetBlock(Player player, int size) {
+        
+        BlockIterator it = new BlockIterator(player, size);
+        while ( it.hasNext() ) {
+            Block b = it.next();
+            if ( b != null && b.getType() != Material.AIR ) {
+                return b;
+            }
+        }
+        return null;
     }
 }
