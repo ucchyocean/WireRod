@@ -23,6 +23,7 @@ import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerFishEvent.State;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -237,6 +238,9 @@ public class WireRod extends JavaPlugin implements Listener {
             Location loc = target.getLocation();
             loc.add(0.5, 0.5, 0.5);
             hook.teleport(loc);
+            
+            // フックにメタデータを入れる
+            hook.setMetadata(NAME, new FixedMetadataValue(this, true));
 
             // 刺さったブロックにエフェクトを発生させる
             hook.getWorld().playEffect(hook.getLocation(), Effect.STEP_SOUND, 8);
@@ -246,6 +250,11 @@ public class WireRod extends JavaPlugin implements Listener {
                 event.getState() == State.FAILED_ATTEMPT ) {
             // 針をひっぱるときの処理
 
+            // メタデータが入っていないなら無視する
+            if ( !hook.hasMetadata(NAME) ) {
+                return;
+            }
+            
             // ひっかかっているのは自分なら、2ダメージ(1ハート)を与える
             if ( event.getCaught() != null &&
                     event.getCaught().equals(player) ) {
