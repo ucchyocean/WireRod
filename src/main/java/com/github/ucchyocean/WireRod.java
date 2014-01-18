@@ -5,6 +5,8 @@
  */
 package com.github.ucchyocean;
 
+import java.util.ArrayList;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Effect;
 import org.bukkit.Location;
@@ -15,7 +17,10 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fish;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -230,19 +235,16 @@ public class WireRod extends JavaPlugin implements Listener {
             // 針を投げるときの処理
 
             // 向いている方向のブロックを取得し、その中にフックをワープさせる
-            Block target = getTargetBlock(player, 30);
-            if ( target == null || target.getType() == Material.AIR ) {
+            Location target = hookTargetBlockOrLivingEntity(player, hook, 30);
+            if ( target == null ) {
                 event.setCancelled(true);
                 return;
             }
-            Location loc = target.getLocation();
-            loc.add(0.5, 0.5, 0.5);
-            hook.teleport(loc);
             
             // フックにメタデータを入れる
             hook.setMetadata(NAME, new FixedMetadataValue(this, true));
 
-            // 刺さったブロックにエフェクトを発生させる
+            // 刺さった場所にエフェクトを発生させる
             hook.getWorld().playEffect(hook.getLocation(), Effect.STEP_SOUND, 8);
 
         } else if ( event.getState() == State.CAUGHT_ENTITY ||
@@ -357,6 +359,59 @@ public class WireRod extends JavaPlugin implements Listener {
         float xp = (float)total / (float)player.getExpToLevel();
         player.setExp(xp);
     }
+    
+    /**
+     * プレイヤーが向いている方向にあるブロックまたはLivingEntityを取得し、
+     * 釣り針をそこに移動する。
+     * @param player プレイヤー
+     * @param hook 釣り針
+     * @param size 取得する最大距離、140以上を指定しないこと
+     * @return プレイヤーが向いている方向にあるブロックまたはLivingEntityのLocation、
+     * 取得できない場合はnullがかえされる
+     */
+    private static Location hookTargetBlockOrLivingEntity(Player player, Fish hook, int range) {
+        
+        BlockIterator it = new BlockIterator(player, range);
+        
+        // ターゲット先周辺のエンティティを取得する
+        Location center = player.getLocation().clone();
+        double halfrange = (double)range / 2.0;
+        center.add(center.getDirection().multiply(halfrange));
+        Entity sb = center.getWorld().spawnEntity(center, EntityType.SNOWBALL);
+        ArrayList<LivingEntity> les = new ArrayList<LivingEntity>();
+        for ( Entity e : sb.getNearbyEntities(halfrange, halfrange, halfrange) ) {
+            if ( e instanceof LivingEntity && !player.equals(e) ) {
+                les.add((LivingEntity)e);
+            }
+        }
+        sb.remove();
+        
+        while ( it.hasNext() ) {
+            Block block = it.next();
+            
+            if ( block.getType() != Material.AIR ) {
+                // ブロックが見つかった、針を中にワープさせる
+                Location location = block.getLocation();
+                location.add(0.5, 0.5, 0.5);
+                hook.teleport(location);
+                return location;
+                
+            } else {
+                // 位置が一致するLivingEntityがないか探す
+                for ( LivingEntity le : les ) {
+                    Location location = le.getLocation();
+                    if ( block.getLocation().distance(le.getLocation()) <= 2.0 ) {
+                        // LivingEntityが見つかった、針を載せる
+                        hook.teleport(location);
+                        le.setPassenger(hook);
+                        le.damage(0F, player);
+                        return location;
+                    }
+                }
+            }
+        }
+        return null;
+    }
 
     /**
      * 指定されたバージョンが、基準より新しいバージョンかどうかを確認する<br>
@@ -397,23 +452,5 @@ public class WireRod extends JavaPlugin implements Listener {
         } else {
             return false;
         }
-    }
-    
-    /**
-     * プレイヤーが向いている方向にあるブロックを取得する。
-     * @param player プレイヤー
-     * @param size 取得する最大距離、140以上を指定しないこと
-     * @return プレイヤーが向いている方向にあるブロック、取得できない場合はnullがかえされる
-     */
-    public static Block getTargetBlock(Player player, int size) {
-        
-        BlockIterator it = new BlockIterator(player, size);
-        while ( it.hasNext() ) {
-            Block b = it.next();
-            if ( b != null && b.getType() != Material.AIR ) {
-                return b;
-            }
-        }
-        return null;
     }
 }
