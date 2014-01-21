@@ -17,6 +17,8 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.ComplexEntityPart;
+import org.bukkit.entity.ComplexLivingEntity;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fish;
@@ -371,20 +373,25 @@ public class WireRod extends JavaPlugin implements Listener {
      */
     private static Location hookTargetBlockOrLivingEntity(Player player, Fish hook, int range) {
         
-        BlockIterator it = new BlockIterator(player, range);
-        
         // ターゲット先周辺のエンティティを取得する
         Location center = player.getLocation().clone();
         double halfrange = (double)range / 2.0;
         center.add(center.getDirection().multiply(halfrange));
         Entity sb = center.getWorld().spawnEntity(center, EntityType.SNOWBALL);
-        ArrayList<LivingEntity> les = new ArrayList<LivingEntity>();
+        ArrayList<Entity> targets = new ArrayList<Entity>();
         for ( Entity e : sb.getNearbyEntities(halfrange, halfrange, halfrange) ) {
             if ( e instanceof LivingEntity && !player.equals(e) ) {
-                les.add((LivingEntity)e);
+                targets.add(e);
+            } else if ( e instanceof ComplexLivingEntity ) {
+                for ( ComplexEntityPart part : ((ComplexLivingEntity)e).getParts() ) {
+                    targets.add(part);
+                }
             }
         }
         sb.remove();
+        
+        // 視線の先にあるブロックを取得する
+        BlockIterator it = new BlockIterator(player, range);
         
         while ( it.hasNext() ) {
             Block block = it.next();
@@ -398,13 +405,17 @@ public class WireRod extends JavaPlugin implements Listener {
                 
             } else {
                 // 位置が一致するLivingEntityがないか探す
-                for ( LivingEntity le : les ) {
-                    Location location = le.getLocation();
-                    if ( block.getLocation().distance(le.getLocation()) <= 2.0 ) {
+                for ( Entity e : targets ) {
+                    Location location = e.getLocation();
+                    if ( block.getLocation().distance(e.getLocation()) <= 2.0 ) {
                         // LivingEntityが見つかった、針を載せる
                         hook.teleport(location);
-                        le.setPassenger(hook);
-                        le.damage(0F, player);
+                        e.setPassenger(hook);
+                        if ( e instanceof LivingEntity ) {
+                            ((LivingEntity)e).damage(0F, player);
+                        } else if ( e instanceof ComplexEntityPart ) {
+                            ((ComplexEntityPart)e).getParent().damage(0F, player);
+                        }
                         return location;
                     }
                 }
