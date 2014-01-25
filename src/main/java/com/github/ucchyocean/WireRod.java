@@ -52,6 +52,7 @@ public class WireRod extends JavaPlugin implements Listener {
     private static final int REVIVE_SECONDS = 5;
     private static final int REVIVE_AMOUNT = 30;
     private static final boolean DEFAULT_REVIVE = true;
+    private static final int DEFAULT_WIRE_RANGE = 30;
 
     protected static WireRod instance;
     
@@ -62,6 +63,7 @@ public class WireRod extends JavaPlugin implements Listener {
     private boolean configRevive;
     private int configReviveSeconds;
     private int configReviveAmount;
+    private int configWireRange;
 
     /**
      * プラグインが有効になったときに呼び出されるメソッド
@@ -110,6 +112,7 @@ public class WireRod extends JavaPlugin implements Listener {
             configReviveSeconds = config.getInt("reviveSeconds", REVIVE_SECONDS);
             configReviveAmount = config.getInt("reviveAmount", REVIVE_AMOUNT);
         }
+        configWireRange = config.getInt("wireRange", DEFAULT_WIRE_RANGE);
     }
 
     /**
@@ -237,7 +240,7 @@ public class WireRod extends JavaPlugin implements Listener {
             // 針を投げるときの処理
 
             // 向いている方向のブロックを取得し、その中にフックをワープさせる
-            Location target = hookTargetBlockOrLivingEntity(player, hook, 30);
+            Location target = hookTargetBlockOrLivingEntity(player, hook, configWireRange);
             if ( target == null ) {
                 event.setCancelled(true);
                 return;
