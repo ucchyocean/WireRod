@@ -243,6 +243,7 @@ public class WireRod extends JavaPlugin implements Listener {
             // 向いている方向のブロックを取得し、その中にフックをワープさせる
             Location target = hookTargetBlockOrLivingEntity(player, hook, configWireRange);
             if ( target == null ) {
+                player.sendMessage(ChatColor.RED + "too far!!");
                 event.setCancelled(true);
                 return;
             }
