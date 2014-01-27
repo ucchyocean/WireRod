@@ -89,7 +89,8 @@ public class WireRod extends JavaPlugin implements Listener {
             colorteaming = getServer().getPluginManager().getPlugin("ColorTeaming");
             String ctversion = colorteaming.getDescription().getVersion();
             if ( isUpperVersion(ctversion, "2.2.5") ) {
-                getLogger().info("ColorTeaming was loaded. BattlePoints was in cooperation with ColorTeaming.");
+                getLogger().info("ColorTeaming was loaded. " 
+                        + getDescription().getName() + " is in cooperation with ColorTeaming.");
                 ColorTeamingBridge bridge = new ColorTeamingBridge(colorteaming);
                 bridge.registerItem(item, NAME, DISPLAY_NAME);
             } else {
