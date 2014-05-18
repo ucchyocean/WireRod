@@ -7,6 +7,7 @@ package com.github.ucchyocean;
 
 import java.util.ArrayList;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Effect;
 import org.bukkit.Location;
@@ -29,6 +30,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerFishEvent.State;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
@@ -55,7 +57,7 @@ public class WireRod extends JavaPlugin implements Listener {
     private static final int DEFAULT_WIRE_RANGE = 30;
 
     protected static WireRod instance;
-    
+
     private ItemStack item;
 
     private int configLevel;
@@ -72,7 +74,7 @@ public class WireRod extends JavaPlugin implements Listener {
     public void onEnable(){
 
         instance = this;
-        
+
         saveDefaultConfig();
         loadConfigDatas();
 
@@ -83,13 +85,15 @@ public class WireRod extends JavaPlugin implements Listener {
         wirerodMeta.setDisplayName(DISPLAY_NAME);
         item.setItemMeta(wirerodMeta);
 
+        makeRecipe();
+
         // ColorTeaming のロード
         Plugin colorteaming = null;
         if ( getServer().getPluginManager().isPluginEnabled("ColorTeaming") ) {
             colorteaming = getServer().getPluginManager().getPlugin("ColorTeaming");
             String ctversion = colorteaming.getDescription().getVersion();
             if ( isUpperVersion(ctversion, "2.2.5") ) {
-                getLogger().info("ColorTeaming was loaded. " 
+                getLogger().info("ColorTeaming was loaded. "
                         + getDescription().getName() + " is in cooperation with ColorTeaming.");
                 ColorTeamingBridge bridge = new ColorTeamingBridge(colorteaming);
                 bridge.registerItem(item, NAME, DISPLAY_NAME);
@@ -114,6 +118,18 @@ public class WireRod extends JavaPlugin implements Listener {
             configReviveAmount = config.getInt("reviveAmount", REVIVE_AMOUNT);
         }
         configWireRange = config.getInt("wireRange", DEFAULT_WIRE_RANGE);
+    }
+
+    /**
+     * レシピを登録する
+     */
+    private void makeRecipe() {
+
+        ShapedRecipe recipe = new ShapedRecipe(getWirerod(configLevel));
+        recipe.shape("  I", " IS", "I S");
+        recipe.setIngredient('I', Material.IRON_INGOT);
+        recipe.setIngredient('S', Material.STRING);
+        getServer().addRecipe(recipe);
     }
 
     /**
@@ -175,7 +191,7 @@ public class WireRod extends JavaPlugin implements Listener {
                 return true;
             }
 
-            Player player = getServer().getPlayerExact(args[1]);
+            Player player = getPlayerExact(args[1]);
             if ( player == null ) {
                 sender.sendMessage(ChatColor.RED + "Player " + args[1] + " was not found.");
                 return true;
@@ -195,11 +211,10 @@ public class WireRod extends JavaPlugin implements Listener {
     }
 
     /**
-     * 指定したプレイヤーに、指定したレベルのWirerodを与える
-     * @param player プレイヤー
+     * 指定したプレイヤーに、指定したレベルのWirerodを取得する
      * @param level レベル
      */
-    private void giveWirerod(Player player, int level) {
+    private ItemStack getWirerod(int level) {
 
         ItemStack rod = this.item.clone();
 
@@ -211,6 +226,17 @@ public class WireRod extends JavaPlugin implements Listener {
 
         rod.addUnsafeEnchantment(Enchantment.OXYGEN, level);
 
+        return rod;
+    }
+
+    /**
+     * 指定したプレイヤーに、指定したレベルのWirerodを与える
+     * @param player プレイヤー
+     * @param level レベル
+     */
+    private void giveWirerod(Player player, int level) {
+
+        ItemStack rod = getWirerod(level);
         ItemStack temp = player.getItemInHand();
         player.setItemInHand(rod);
         if ( temp != null ) {
@@ -247,7 +273,7 @@ public class WireRod extends JavaPlugin implements Listener {
                 event.setCancelled(true);
                 return;
             }
-            
+
             // フックにメタデータを入れる
             hook.setMetadata(NAME, new FixedMetadataValue(this, true));
 
@@ -255,7 +281,7 @@ public class WireRod extends JavaPlugin implements Listener {
             hook.getWorld().playEffect(hook.getLocation(), Effect.STEP_SOUND, 8);
 
         } else if ( event.getState() == State.CAUGHT_ENTITY ||
-                event.getState() == State.IN_GROUND || 
+                event.getState() == State.IN_GROUND ||
                 event.getState() == State.FAILED_ATTEMPT ) {
             // 針をひっぱるときの処理
 
@@ -263,7 +289,7 @@ public class WireRod extends JavaPlugin implements Listener {
             if ( !hook.hasMetadata(NAME) ) {
                 return;
             }
-            
+
             // ひっかかっているのは自分なら、2ダメージ(1ハート)を与える
             if ( event.getCaught() != null &&
                     event.getCaught().equals(player) ) {
@@ -366,7 +392,7 @@ public class WireRod extends JavaPlugin implements Listener {
         float xp = (float)total / (float)player.getExpToLevel();
         player.setExp(xp);
     }
-    
+
     /**
      * プレイヤーが向いている方向にあるブロックまたはLivingEntityを取得し、
      * 釣り針をそこに移動する。
@@ -377,14 +403,14 @@ public class WireRod extends JavaPlugin implements Listener {
      * 取得できない場合はnullがかえされる
      */
     private static Location hookTargetBlockOrLivingEntity(Player player, Fish hook, int range) {
-        
+
         // ターゲット先周辺のエンティティを取得する
         Location center = player.getLocation().clone();
         double halfrange = (double)range / 2.0;
         center.add(center.getDirection().multiply(halfrange));
-        Entity sb = center.getWorld().spawnEntity(center, EntityType.SNOWBALL);
+        Entity orb = center.getWorld().spawnEntity(center, EntityType.EXPERIENCE_ORB);
         ArrayList<Entity> targets = new ArrayList<Entity>();
-        for ( Entity e : sb.getNearbyEntities(halfrange, halfrange, halfrange) ) {
+        for ( Entity e : orb.getNearbyEntities(halfrange, halfrange, halfrange) ) {
             if ( e instanceof LivingEntity && !player.equals(e) ) {
                 targets.add(e);
             } else if ( e instanceof ComplexLivingEntity ) {
@@ -393,21 +419,21 @@ public class WireRod extends JavaPlugin implements Listener {
                 }
             }
         }
-        sb.remove();
-        
+        orb.remove();
+
         // 視線の先にあるブロックを取得する
         BlockIterator it = new BlockIterator(player, range);
-        
+
         while ( it.hasNext() ) {
             Block block = it.next();
-            
+
             if ( block.getType() != Material.AIR ) {
                 // ブロックが見つかった、針を中にワープさせる
                 Location location = block.getLocation();
                 location.add(0.5, 0.5, 0.5);
                 hook.teleport(location);
                 return location;
-                
+
             } else {
                 // 位置が一致するLivingEntityがないか探す
                 for ( Entity e : targets ) {
@@ -468,5 +494,20 @@ public class WireRod extends JavaPlugin implements Listener {
         } else {
             return false;
         }
+    }
+
+    /**
+     * 指定した名前のプレイヤーを取得する
+     * @param name プレイヤー名
+     * @return
+     */
+    private Player getPlayerExact(String name) {
+
+        for ( Player player : Bukkit.getOnlinePlayers() ) {
+            if ( player.getName().equals(name) ) {
+                return player;
+            }
+        }
+        return null;
     }
 }
