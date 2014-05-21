@@ -352,6 +352,7 @@ public class WireRod extends JavaPlugin implements Listener {
      * @param amount 減らす量
      */
     public static void takeExperience(final Player player, int amount) {
+        updateTotal(player);
         player.giveExp(-amount);
         updateExp(player);
     }
@@ -364,16 +365,6 @@ public class WireRod extends JavaPlugin implements Listener {
      */
     public static boolean hasExperience(final Player player, int amount) {
         return (player.getTotalExperience() >= amount);
-    }
-
-    /**
-     * プレイヤーの経験値量を、指定値に設定する。
-     * @param player プレイヤー
-     * @param amount 経験値の量
-     */
-    public static void setExperience(final Player player, int amount) {
-        player.setTotalExperience(amount);
-        updateExp(player);
     }
 
     /**
@@ -391,6 +382,36 @@ public class WireRod extends JavaPlugin implements Listener {
         }
         float xp = (float)total / (float)player.getExpToLevel();
         player.setExp(xp);
+    }
+
+    private static void updateTotal(final Player player) {
+
+        int total = getExpToLevel(player.getLevel());
+        total += (int)(player.getExp() * getExpAtLevel(player.getLevel() + 1));
+        player.setTotalExperience(total);
+    }
+
+    private static int getExpAtLevel(final int level) {
+        if (level > 29) {
+            return 62 + (level - 30) * 7;
+        } else if (level > 15) {
+            return 17 + (level - 15) * 3;
+        }
+        return 17;
+    }
+
+    private static int getExpToLevel(final int level) {
+        int currentLevel = 0;
+        int exp = 0;
+
+        while (currentLevel < level) {
+            exp += getExpAtLevel(currentLevel);
+            currentLevel++;
+        }
+        if (exp < 0) {
+            exp = Integer.MAX_VALUE;
+        }
+        return exp;
     }
 
     /**
