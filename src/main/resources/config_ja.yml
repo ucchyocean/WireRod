@@ -1,0 +1,12 @@
+# ${project.name} v${project.version}
+# @author     ucchy
+# @license    LGPLv3
+# @copyright  Copyright ucchy 2013-2014
+
+# /wr get コマンドで取得される、WireRodのデフォルトレベル
+# 1 から 10 まで指定できます。
+defaultLevel: 4
+
+# WireRodを使用したときに、アイテムの耐久値をいくつ減らすかを設定します。
+# 0なら、耐久値は減りません。
+decreaseDurability: 2

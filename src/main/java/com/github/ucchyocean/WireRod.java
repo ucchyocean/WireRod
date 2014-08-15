@@ -5,6 +5,7 @@
  */
 package com.github.ucchyocean;
 
+import java.io.File;
 import java.util.ArrayList;
 
 import org.bukkit.Bukkit;
@@ -16,7 +17,6 @@ import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.ComplexEntityPart;
 import org.bukkit.entity.ComplexLivingEntity;
@@ -35,7 +35,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.BlockIterator;
 import org.bukkit.util.Vector;
 
@@ -46,26 +45,13 @@ import org.bukkit.util.Vector;
 public class WireRod extends JavaPlugin implements Listener {
 
     private static final String NAME = "wirerod";
-    private static final String DISPLAY_NAME =
-            ChatColor.BLUE.toString() + ChatColor.BOLD.toString() + NAME;
-    private static final int DEFAULT_LEVEL = 4;
-    private static final int DEFAULT_COST = 10;
-    private static final int MAX_LEVEL = 20;
-    private static final int REVIVE_SECONDS = 5;
-    private static final int REVIVE_AMOUNT = 30;
-    private static final boolean DEFAULT_REVIVE = true;
-    private static final int DEFAULT_WIRE_RANGE = 30;
+    private static final String DISPLAY_NAME = NAME;
+    protected static final int MAX_LEVEL = 20;
 
     protected static WireRod instance;
 
     private ItemStack item;
-
-    private int configLevel;
-    private int configCost;
-    private boolean configRevive;
-    private int configReviveSeconds;
-    private int configReviveAmount;
-    private int configWireRange;
+    private WireRodConfig config;
 
     /**
      * プラグインが有効になったときに呼び出されるメソッド
@@ -75,8 +61,7 @@ public class WireRod extends JavaPlugin implements Listener {
 
         instance = this;
 
-        saveDefaultConfig();
-        loadConfigDatas();
+        config = new WireRodConfig(this);
 
         getServer().getPluginManager().registerEvents(this, this);
 
@@ -105,27 +90,11 @@ public class WireRod extends JavaPlugin implements Listener {
     }
 
     /**
-     * 設定情報の読み込み処理
-     */
-    private void loadConfigDatas() {
-
-        FileConfiguration config = getConfig();
-        configLevel = config.getInt("defaultLevel", DEFAULT_LEVEL);
-        configCost = config.getInt("cost", DEFAULT_COST);
-        configRevive = config.getBoolean("revive", DEFAULT_REVIVE);
-        if (configRevive) {
-            configReviveSeconds = config.getInt("reviveSeconds", REVIVE_SECONDS);
-            configReviveAmount = config.getInt("reviveAmount", REVIVE_AMOUNT);
-        }
-        configWireRange = config.getInt("wireRange", DEFAULT_WIRE_RANGE);
-    }
-
-    /**
      * レシピを登録する
      */
     private void makeRecipe() {
 
-        ShapedRecipe recipe = new ShapedRecipe(getWirerod(configLevel));
+        ShapedRecipe recipe = new ShapedRecipe(getWirerod(config.getDefaultLevel()));
         recipe.shape("  I", " IS", "I S");
         recipe.setIngredient('I', Material.IRON_INGOT);
         recipe.setIngredient('S', Material.STRING);
@@ -153,8 +122,7 @@ public class WireRod extends JavaPlugin implements Listener {
             }
 
             // コンフィグ再読込
-            this.reloadConfig();
-            this.loadConfigDatas();
+            config.reloadConfig();
             sender.sendMessage(ChatColor.GREEN + "WireRod configuration was reloaded!");
 
             return true;
@@ -174,7 +142,7 @@ public class WireRod extends JavaPlugin implements Listener {
 
             Player player = (Player)sender;
 
-            int level = configLevel;
+            int level = config.getDefaultLevel();
             if ( args.length >= 2 && args[1].matches("^[0-9]+$") ) {
                 level = Integer.parseInt(args[1]);
             }
@@ -191,13 +159,13 @@ public class WireRod extends JavaPlugin implements Listener {
                 return true;
             }
 
-            Player player = getPlayerExact(args[1]);
+            Player player = getPlayer(args[1]);
             if ( player == null ) {
                 sender.sendMessage(ChatColor.RED + "Player " + args[1] + " was not found.");
                 return true;
             }
 
-            int level = configLevel;
+            int level = config.getDefaultLevel();
             if ( args.length >= 3 && args[2].matches("^[0-9]+$") ) {
                 level = Integer.parseInt(args[2]);
             }
@@ -267,7 +235,7 @@ public class WireRod extends JavaPlugin implements Listener {
             // 針を投げるときの処理
 
             // 向いている方向のブロックを取得し、その中にフックをワープさせる
-            Location target = hookTargetBlockOrLivingEntity(player, hook, configWireRange);
+            Location target = hookTargetBlockOrLivingEntity(player, hook, config.getWireRange());
             if ( target == null ) {
                 player.sendMessage(ChatColor.RED + "too far!!");
                 event.setCancelled(true);
@@ -299,119 +267,45 @@ public class WireRod extends JavaPlugin implements Listener {
 
             Location eLoc = player.getEyeLocation();
 
-            // 経験値が不足している場合は、燃料切れとして終了する
-            if ( !hasExperience(player, configCost) ) {
-                player.sendMessage(ChatColor.RED + "no fuel!!");
-                player.getWorld().playEffect(eLoc, Effect.SMOKE, 4);
-                player.getWorld().playEffect(eLoc, Effect.SMOKE, 4);
-                player.playSound(eLoc, Sound.IRONGOLEM_THROW, (float)1.0, (float)1.5);
-                return;
-            }
-
             // ロッドと、そのレベルを取得
             ItemStack rod = player.getItemInHand();
-            double level = configLevel;
+            int level = config.getDefaultLevel();
             if ( rod.containsEnchantment(Enchantment.OXYGEN) ) {
-                level = (double)rod.getEnchantmentLevel(Enchantment.OXYGEN);
+                level = rod.getEnchantmentLevel(Enchantment.OXYGEN);
             }
 
-            // 経験値を消費する、耐久値を0に戻す
-            takeExperience(player, configCost);
-            rod.setDurability((short)0);
+            // 耐久値を消費する
+            short durability = rod.getDurability();
+            durability += config.getDecreaseDurability();
+            if ( durability >= rod.getType().getMaxDurability() ) {
+                // 耐久値が無くなったので壊す
+                player.setItemInHand(null);
+                updateInventory(player);
+                player.getWorld().playSound(
+                        player.getLocation(), Sound.ITEM_BREAK, 1, 1);
+            } else {
+                rod.setDurability(durability);
+            }
 
-            // もし今回の操作で燃料切れになった場合は、指定秒後に復活させる
-            if ( configRevive && !hasExperience(player, configCost) ) {
-                BukkitRunnable runnable = new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        takeExperience(player, -configReviveAmount);
-                    }
-                };
-                runnable.runTaskLater(this, configReviveSeconds * 20);
-                player.sendMessage(ChatColor.GOLD +
-                        "your fuel will revive after " + configReviveSeconds + " seconds.");
+            // 針との距離と方向を調べる
+            Location hookLoc = hook.getLocation();
+            Location baseLoc = player.getLocation();
+            Vector vector = hook.getLocation().subtract(baseLoc).toVector().normalize();
+
+            // 針との距離で、飛び出す力を算出する
+            double bonus = (hookLoc.distance(baseLoc) / 30.0
+                    * config.getDistanceBonusRatio()) + 1.0;
+            double power = level * bonus / 2;
+            if ( power > 10.0 ) {
+                power = 10.0;
             }
 
             // 飛翔
-            Location hookLoc = hook.getLocation();
-            Location baseLoc = player.getLocation();
-            Vector vector = new Vector(
-                    hookLoc.getX()-baseLoc.getX(),
-                    hookLoc.getY()-baseLoc.getY(),
-                    hookLoc.getZ()-baseLoc.getZ());
-            player.setVelocity(vector.normalize().multiply(level/2));
+            player.setVelocity(vector.multiply(power));
             player.setFallDistance(-1000F);
             player.getWorld().playEffect(eLoc, Effect.POTION_BREAK, 22);
             player.getWorld().playEffect(eLoc, Effect.POTION_BREAK, 22);
         }
-    }
-
-    /**
-     * プレイヤーから、指定した経験値量を減らす。
-     * @param player プレイヤー
-     * @param amount 減らす量
-     */
-    public static void takeExperience(final Player player, int amount) {
-        updateTotal(player);
-        player.giveExp(-amount);
-        updateExp(player);
-    }
-
-    /**
-     * プレイヤーが指定した量の経験値を持っているかどうか判定する。
-     * @param player プレイヤー
-     * @param amount 判定する量
-     * @return もっているかどうか
-     */
-    public static boolean hasExperience(final Player player, int amount) {
-        return (player.getTotalExperience() >= amount);
-    }
-
-    /**
-     * 経験値表示を更新する
-     * @param player 更新対象のプレイヤー
-     */
-    private static void updateExp(final Player player) {
-
-        int total = player.getTotalExperience();
-        player.setLevel(0);
-        player.setExp(0);
-        while ( total > player.getExpToLevel() ) {
-            total -= player.getExpToLevel();
-            player.setLevel(player.getLevel()+1);
-        }
-        float xp = (float)total / (float)player.getExpToLevel();
-        player.setExp(xp);
-    }
-
-    private static void updateTotal(final Player player) {
-
-        int total = getExpToLevel(player.getLevel());
-        total += (int)(player.getExp() * getExpAtLevel(player.getLevel() + 1));
-        player.setTotalExperience(total);
-    }
-
-    private static int getExpAtLevel(final int level) {
-        if (level > 29) {
-            return 62 + (level - 30) * 7;
-        } else if (level > 15) {
-            return 17 + (level - 15) * 3;
-        }
-        return 17;
-    }
-
-    private static int getExpToLevel(final int level) {
-        int currentLevel = 0;
-        int exp = 0;
-
-        while (currentLevel < level) {
-            exp += getExpAtLevel(currentLevel);
-            currentLevel++;
-        }
-        if (exp < 0) {
-            exp = Integer.MAX_VALUE;
-        }
-        return exp;
     }
 
     /**
@@ -518,17 +412,29 @@ public class WireRod extends JavaPlugin implements Listener {
     }
 
     /**
+     * プレイヤーのインベントリを更新する
+     * @param player
+     */
+    @SuppressWarnings("deprecation")
+    public static void updateInventory(Player player) {
+        player.updateInventory();
+    }
+
+    /**
      * 指定した名前のプレイヤーを取得する
      * @param name プレイヤー名
+     * @return プレイヤー
+     */
+    @SuppressWarnings("deprecation")
+    public static Player getPlayer(String name) {
+        return Bukkit.getPlayerExact(name);
+    }
+
+    /**
+     * このプラグインのjarファイルを返す
      * @return
      */
-    private Player getPlayerExact(String name) {
-
-        for ( Player player : Bukkit.getOnlinePlayers() ) {
-            if ( player.getName().equals(name) ) {
-                return player;
-            }
-        }
-        return null;
+    protected File getJarFile() {
+        return instance.getFile();
     }
 }
