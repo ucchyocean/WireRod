@@ -28,9 +28,9 @@ public class WireRodConfig {
     private WireRod parent;
 
     private int defaultLevel;
-    private int decreaseDurability;
     private int wireRange;
     private double distanceBonusRatio;
+    private boolean protectFallDamage;
 
     /**
      * コンストラクタ
@@ -66,14 +66,11 @@ public class WireRodConfig {
             defaultLevel = WireRod.MAX_LEVEL;
         }
 
-        decreaseDurability = conf.getInt("decreaseDurability", 2);
-        if ( decreaseDurability < 0 ) {
-            decreaseDurability = 0;
-        }
-
         wireRange = conf.getInt("wireRange", 30);
 
         distanceBonusRatio = conf.getDouble("distanceBonusRatio", 1.0);
+
+        protectFallDamage = conf.getBoolean("protectFallDamage", true);
     }
 
     /**
@@ -171,13 +168,6 @@ public class WireRodConfig {
     }
 
     /**
-     * @return decreaseDurability
-     */
-    public int getDecreaseDurability() {
-        return decreaseDurability;
-    }
-
-    /**
      * @return wireRange
      */
     public int getWireRange() {
@@ -189,5 +179,12 @@ public class WireRodConfig {
      */
     public double getDistanceBonusRatio() {
         return distanceBonusRatio;
+    }
+
+    /**
+     * @return protectFallDamage
+     */
+    public boolean isProtectFallDamage() {
+        return protectFallDamage;
     }
 }

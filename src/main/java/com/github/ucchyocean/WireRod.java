@@ -13,7 +13,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -27,6 +26,8 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerFishEvent.State;
 import org.bukkit.inventory.ItemStack;
@@ -46,6 +47,9 @@ public class WireRod extends JavaPlugin implements Listener {
 
     private static final String NAME = "wirerod";
     private static final String DISPLAY_NAME = NAME;
+
+    private static final String PROTECT_FALL_META_NAME = "wirerodfallprotect";
+
     protected static final int MAX_LEVEL = 20;
 
     protected static WireRod instance;
@@ -222,12 +226,15 @@ public class WireRod extends JavaPlugin implements Listener {
         final Player player = event.getPlayer();
         final Fish hook = event.getHook();
 
+        // パーミッションが無いなら何もしない
         if ( !player.hasPermission("wirerod.action") ) return;
 
-        if ( player.getItemInHand() == null ||
-                player.getItemInHand().getType() == Material.AIR ||
-                !player.getItemInHand().getItemMeta().hasDisplayName() ||
-                !player.getItemInHand().getItemMeta().getDisplayName().equals(DISPLAY_NAME) ) {
+        // 手に持っているアイテムがWireRodでないなら何もしない
+        ItemStack rod = player.getItemInHand();
+        if ( rod == null ||
+                rod.getType() == Material.AIR ||
+                !rod.getItemMeta().hasDisplayName() ||
+                !rod.getItemMeta().getDisplayName().equals(DISPLAY_NAME) ) {
             return;
         }
 
@@ -268,23 +275,9 @@ public class WireRod extends JavaPlugin implements Listener {
             Location eLoc = player.getEyeLocation();
 
             // ロッドと、そのレベルを取得
-            ItemStack rod = player.getItemInHand();
             int level = config.getDefaultLevel();
             if ( rod.containsEnchantment(Enchantment.OXYGEN) ) {
                 level = rod.getEnchantmentLevel(Enchantment.OXYGEN);
-            }
-
-            // 耐久値を消費する
-            short durability = rod.getDurability();
-            durability += config.getDecreaseDurability();
-            if ( durability >= rod.getType().getMaxDurability() ) {
-                // 耐久値が無くなったので壊す
-                player.setItemInHand(null);
-                updateInventory(player);
-                player.getWorld().playSound(
-                        player.getLocation(), Sound.ITEM_BREAK, 1, 1);
-            } else {
-                rod.setDurability(durability);
             }
 
             // 針との距離と方向を調べる
@@ -302,9 +295,33 @@ public class WireRod extends JavaPlugin implements Listener {
 
             // 飛翔
             player.setVelocity(vector.multiply(power));
-            player.setFallDistance(-1000F);
+
+            // 落下ダメージ保護を加える
+            if ( config.isProtectFallDamage() ) {
+                player.setMetadata(PROTECT_FALL_META_NAME, new FixedMetadataValue(this, true));
+            }
+
+            // エフェクト
             player.getWorld().playEffect(eLoc, Effect.POTION_BREAK, 22);
             player.getWorld().playEffect(eLoc, Effect.POTION_BREAK, 22);
+        }
+    }
+
+    /**
+     * エンティティがダメージを受けたときのイベント
+     * @param event
+     */
+    @EventHandler
+    public void onDamage(EntityDamageEvent event) {
+
+        // プレイヤーの非ダメージイベントで、落下ダメージで、
+        // ダメージ保護用のメタデータを持っているなら、ダメージから保護する
+        if ( event.getEntity() instanceof Player &&
+                event.getCause() == DamageCause.FALL &&
+                event.getEntity().hasMetadata(PROTECT_FALL_META_NAME) ) {
+
+            event.setCancelled(true);
+            event.getEntity().removeMetadata(PROTECT_FALL_META_NAME, this);
         }
     }
 

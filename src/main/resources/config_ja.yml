@@ -7,6 +7,5 @@
 # 1 から 10 まで指定できます。
 defaultLevel: 4
 
-# WireRodを使用したときに、アイテムの耐久値をいくつ減らすかを設定します。
-# 0なら、耐久値は減りません。
-decreaseDurability: 2
+# 落下ダメージ保護機能の有効無効を切り替えます。
+protectFallDamage: true
