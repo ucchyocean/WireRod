@@ -4,7 +4,7 @@
 # @copyright  Copyright ucchy 2013-2014
 
 # /wr get コマンドで取得される、WireRodのデフォルトレベル
-# 1 から 10 まで指定できます。
+# 1 から 20 まで指定できます。
 defaultLevel: 4
 
 # 落下ダメージ保護機能の有効無効を切り替えます。

@@ -1,7 +1,7 @@
 WireRod
 ========
 
-http://www53.atwiki.jp/mc-shooter/pages/19.html
+http://forum.minecraftuser.jp/viewtopic.php?f=38&t=21210&p=188854#p188854
 
 導入方法：pluginsフォルダにjarを入れてください。<br />
 使い方：`/wr get` でwirerodを取得し、クリックで針を投げ、針がかかったあとに再度クリックすると、針がかかったところに飛びます。<br />
