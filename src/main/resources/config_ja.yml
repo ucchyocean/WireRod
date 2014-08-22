@@ -9,3 +9,6 @@ defaultLevel: 4
 
 # 落下ダメージ保護機能の有効無効を切り替えます。
 protectFallDamage: true
+
+# WireRodのクラフト可/不可を切り替えます。
+enableCraft: true

@@ -31,6 +31,7 @@ public class WireRodConfig {
     private int wireRange;
     private double distanceBonusRatio;
     private boolean protectFallDamage;
+    private boolean enableCraft;
 
     /**
      * コンストラクタ
@@ -71,6 +72,8 @@ public class WireRodConfig {
         distanceBonusRatio = conf.getDouble("distanceBonusRatio", 1.0);
 
         protectFallDamage = conf.getBoolean("protectFallDamage", true);
+
+        enableCraft = conf.getBoolean("enableCraft", true);
     }
 
     /**
@@ -186,5 +189,12 @@ public class WireRodConfig {
      */
     public boolean isProtectFallDamage() {
         return protectFallDamage;
+    }
+
+    /**
+     * @return enableCraft
+     */
+    public boolean isEnableCraft() {
+        return enableCraft;
     }
 }

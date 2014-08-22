@@ -7,6 +7,7 @@ package com.github.ucchyocean;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -31,6 +32,7 @@ import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerFishEvent.State;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -56,6 +58,7 @@ public class WireRod extends JavaPlugin implements Listener {
 
     private ItemStack item;
     private WireRodConfig config;
+    private ShapedRecipe recipe;
 
     /**
      * プラグインが有効になったときに呼び出されるメソッド
@@ -74,7 +77,9 @@ public class WireRod extends JavaPlugin implements Listener {
         wirerodMeta.setDisplayName(DISPLAY_NAME);
         item.setItemMeta(wirerodMeta);
 
-        makeRecipe();
+        if ( config.isEnableCraft() ) {
+            makeRecipe();
+        }
 
         // ColorTeaming のロード
         Plugin colorteaming = null;
@@ -98,11 +103,28 @@ public class WireRod extends JavaPlugin implements Listener {
      */
     private void makeRecipe() {
 
-        ShapedRecipe recipe = new ShapedRecipe(getWirerod(config.getDefaultLevel()));
+        recipe = new ShapedRecipe(getWirerod(config.getDefaultLevel()));
         recipe.shape("  I", " IS", "I S");
         recipe.setIngredient('I', Material.IRON_INGOT);
         recipe.setIngredient('S', Material.STRING);
         getServer().addRecipe(recipe);
+    }
+
+    private void removeRecipe() {
+
+        Iterator<Recipe> it = getServer().recipeIterator();
+        while ( it.hasNext() ) {
+            Recipe recipe = it.next();
+            ItemStack result = recipe.getResult();
+            if ( !result.hasItemMeta() ||
+                    !result.getItemMeta().hasDisplayName() ||
+                    !result.getItemMeta().getDisplayName().equals(DISPLAY_NAME) ) {
+                continue;
+            }
+            it.remove();
+        }
+
+        this.recipe = null;
     }
 
     /**
@@ -127,6 +149,13 @@ public class WireRod extends JavaPlugin implements Listener {
 
             // コンフィグ再読込
             config.reloadConfig();
+
+            if ( recipe == null && config.isEnableCraft() ) {
+                makeRecipe();
+            } else if ( recipe != null && !config.isEnableCraft() ) {
+                removeRecipe();
+            }
+
             sender.sendMessage(ChatColor.GREEN + "WireRod configuration was reloaded!");
 
             return true;
