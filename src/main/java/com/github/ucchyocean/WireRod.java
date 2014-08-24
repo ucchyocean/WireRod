@@ -399,7 +399,7 @@ public class WireRod extends JavaPlugin implements Listener {
                 // 位置が一致するLivingEntityがないか探す
                 for ( Entity e : targets ) {
                     Location location = e.getLocation();
-                    if ( block.getLocation().distance(e.getLocation()) <= 2.0 ) {
+                    if ( block.getLocation().distanceSquared(e.getLocation()) <= 4.0 ) {
                         // LivingEntityが見つかった、針を載せる
                         hook.teleport(location);
                         e.setPassenger(hook);
