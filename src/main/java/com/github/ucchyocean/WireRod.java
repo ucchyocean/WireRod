@@ -45,6 +45,7 @@ import org.bukkit.util.Vector;
  * ワイヤロッドプラグイン
  * @author ucchy
  */
+@SuppressWarnings("deprecation")
 public class WireRod extends JavaPlugin implements Listener {
 
     private static final String NAME = "wirerod";
@@ -267,6 +268,11 @@ public class WireRod extends JavaPlugin implements Listener {
             return;
         }
 
+        // 水中呼吸エンチャントがついていないなら何もしない
+        if ( !rod.containsEnchantment(Enchantment.OXYGEN) ) {
+            return;
+        }
+
         if ( event.getState() == State.FISHING ) {
             // 針を投げるときの処理
 
@@ -343,7 +349,7 @@ public class WireRod extends JavaPlugin implements Listener {
     @EventHandler
     public void onDamage(EntityDamageEvent event) {
 
-        // プレイヤーの非ダメージイベントで、落下ダメージで、
+        // プレイヤーの被ダメージイベントで、落下ダメージで、
         // ダメージ保護用のメタデータを持っているなら、ダメージから保護する
         if ( event.getEntity() instanceof Player &&
                 event.getCause() == DamageCause.FALL &&
@@ -425,6 +431,11 @@ public class WireRod extends JavaPlugin implements Listener {
      */
     private boolean isUpperVersion(String version, String border) {
 
+        int hyphen = version.indexOf("-");
+        if ( hyphen > 0 ) {
+            version = version.substring(0, hyphen);
+        }
+
         String[] versionArray = version.split("\\.");
         int[] versionNumbers = new int[versionArray.length];
         for ( int i=0; i<versionArray.length; i++ ) {
@@ -461,7 +472,6 @@ public class WireRod extends JavaPlugin implements Listener {
      * プレイヤーのインベントリを更新する
      * @param player
      */
-    @SuppressWarnings("deprecation")
     public static void updateInventory(Player player) {
         player.updateInventory();
     }
@@ -471,7 +481,6 @@ public class WireRod extends JavaPlugin implements Listener {
      * @param name プレイヤー名
      * @return プレイヤー
      */
-    @SuppressWarnings("deprecation")
     public static Player getPlayer(String name) {
         return Bukkit.getPlayerExact(name);
     }

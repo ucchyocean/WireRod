@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.github.ucchyocean</groupId>
   <artifactId>WireRod</artifactId>
-  <version>3.0.2</version>
+  <version>3.1.0</version>
   <description>Shooter is the magic battle item.</description>
 
   <properties>
@@ -74,13 +74,18 @@
       <name>ucchy github repository</name>
       <url>https://raw.github.com/ucchyocean/mvn-repo/master</url>
     </repository>
+    <repository>
+      <id>spigot-repo</id>
+      <name>Spigot Maven Repository</name>
+      <url>https://hub.spigotmc.org/nexus/content/groups/public</url>
+    </repository>
   </repositories>
 
   <dependencies>
     <dependency>
       <groupId>org.bukkit</groupId>
-      <artifactId>craftbukkit</artifactId>
-      <version>1.7.9-R0.2-SNAPSHOT</version>
+      <artifactId>bukkit</artifactId>
+      <version>1.9-R0.1-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>com.github.ucchyocean</groupId>
