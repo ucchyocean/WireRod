@@ -22,7 +22,7 @@ import org.bukkit.entity.ComplexEntityPart;
 import org.bukkit.entity.ComplexLivingEntity;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Fish;
+import org.bukkit.entity.FishHook;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -254,7 +254,7 @@ public class WireRod extends JavaPlugin implements Listener {
     public void onHook(PlayerFishEvent event) {
 
         final Player player = event.getPlayer();
-        final Fish hook = event.getHook();
+        final FishHook hook = event.getHook();
 
         // パーミッションが無いなら何もしない
         if ( !player.hasPermission("wirerod.action") ) return;
@@ -369,7 +369,7 @@ public class WireRod extends JavaPlugin implements Listener {
      * @return プレイヤーが向いている方向にあるブロックまたはLivingEntityのLocation、
      * 取得できない場合はnullがかえされる
      */
-    private static Location hookTargetBlockOrLivingEntity(Player player, Fish hook, int range) {
+    private static Location hookTargetBlockOrLivingEntity(Player player, FishHook hook, int range) {
 
         // ターゲット先周辺のエンティティを取得する
         Location center = player.getLocation().clone();
