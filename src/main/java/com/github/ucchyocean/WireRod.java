@@ -239,8 +239,8 @@ public class WireRod extends JavaPlugin implements Listener {
     private void giveWirerod(Player player, int level) {
 
         ItemStack rod = getWirerod(level);
-        ItemStack temp = player.getItemInHand();
-        player.setItemInHand(rod);
+        ItemStack temp = player.getInventory().getItemInMainHand();
+        player.getInventory().setItemInMainHand(rod);
         if ( temp != null ) {
             player.getInventory().addItem(temp);
         }
@@ -260,7 +260,7 @@ public class WireRod extends JavaPlugin implements Listener {
         if ( !player.hasPermission("wirerod.action") ) return;
 
         // 手に持っているアイテムがWireRodでないなら何もしない
-        ItemStack rod = player.getItemInHand();
+        ItemStack rod = player.getInventory().getItemInMainHand();
         if ( rod == null ||
                 rod.getType() == Material.AIR ||
                 !rod.getItemMeta().hasDisplayName() ||
@@ -408,7 +408,7 @@ public class WireRod extends JavaPlugin implements Listener {
                     if ( block.getLocation().distanceSquared(e.getLocation()) <= 4.0 ) {
                         // LivingEntityが見つかった、針を載せる
                         hook.teleport(location);
-                        e.setPassenger(hook);
+                        e.addPassenger(hook);
                         if ( e instanceof LivingEntity ) {
                             ((LivingEntity)e).damage(0F, player);
                         } else if ( e instanceof ComplexEntityPart ) {
