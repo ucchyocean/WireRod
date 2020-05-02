@@ -22,8 +22,7 @@ final class Compatibles {
         try {
             NamespacedKey key = new NamespacedKey(WireRod.getPlugin(WireRod.class), WireRodUtil.DISPLAY_NAME);
             recipe = new ShapedRecipe(key, rod);
-        } catch (NoClassDefFoundError e) {
-            // バージョン違いでNamespacedKeyクラスが見つからなかったとき
+        } catch (NoClassDefFoundError e) { // <= 1.11
             recipe = new ShapedRecipe(rod);
         }
 
@@ -36,7 +35,7 @@ final class Compatibles {
     static ItemStack getItemInMainHand(Player player) {
         try {
             return player.getInventory().getItemInMainHand();
-        } catch (NoSuchMethodError e) {
+        } catch (NoSuchMethodError e) { // <= 1.8.8
             return player.getInventory().getItemInHand();
         }
     }
@@ -44,7 +43,7 @@ final class Compatibles {
     static void setItemInMainHand(Player player, ItemStack item) {
         try {
             player.getInventory().setItemInMainHand(item);
-        } catch (NoSuchMethodError e) {
+        } catch (NoSuchMethodError e) { // <= 1.8.8
             player.getInventory().setItemInHand(item);
         }
     }
@@ -77,7 +76,7 @@ final class Compatibles {
             } else {
                 return null;
             }
-        } catch (NoSuchMethodError e) {
+        } catch (NoSuchMethodError e) { // <= 1.8.8
             // 手に持っているアイテムがWireRodでないなら何もしない
             rod = player.getInventory().getItemInHand();
             if (!WireRodUtil.isWireRod(rod)) {
@@ -108,8 +107,7 @@ final class Compatibles {
         boolean pullHook = event.getState() != State.CAUGHT_FISH;
         try {
             pullHook = pullHook && event.getState() != State.valueOf("BITE");
-        } catch (IllegalArgumentException ignored) {
-            // 1.8.8 では PlayerFishEvent.State.BITE は存在しない。
+        } catch (IllegalArgumentException ignored) { // 1.8.8 では PlayerFishEvent.State.BITE は存在しない。
         }
         return pullHook;
     }
@@ -124,7 +122,7 @@ final class Compatibles {
     static void addPassenger(Entity vehicle, Entity passenger) {
         try {
             vehicle.addPassenger(passenger);
-        } catch (NoSuchMethodError e) {
+        } catch (NoSuchMethodError e) { // <= 1.10.2
             getTopPassenger(vehicle).setPassenger(passenger);
         }
     }
