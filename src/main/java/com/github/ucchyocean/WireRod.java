@@ -281,8 +281,8 @@ public class WireRod extends JavaPlugin implements Listener {
         }
 
         // 手に持っているアイテムがWireRodでないなら何もしない
-        ItemStack rod = player.getInventory().getItemInMainHand();
-        if (!isWirerod(rod)) {
+        ItemStack rod = getHeldWirerod(player);
+        if (rod == null) {
             return;
         }
 
@@ -484,6 +484,45 @@ public class WireRod extends JavaPlugin implements Listener {
         } else {
             return false;
         }
+    }
+
+    /**
+     * 両手のどちらかにあるワイヤーロッドを取得する。
+     * Minecraftのバージョン1.9以前で、片手にしかアイテムを持てない場合は昔のメソッドを使う。
+     * 
+     * @param player
+     * @return
+     */
+    public ItemStack getHeldWirerod(Player player) {
+        
+        ItemStack rod;
+        try {
+            ItemStack offHandItem = player.getInventory().getItemInOffHand();
+            ItemStack mainHandItem = player.getInventory().getItemInMainHand();
+    
+            // メインハンドにワイヤーロッドがある
+            if (isWirerod(mainHandItem)) {
+                rod = mainHandItem;
+            // オフハンドにワイヤーロッドがある
+            } else if (isWirerod(offHandItem)) {
+                // メインハンドが釣り竿で、その釣り竿がワイヤーロッドでないなら終了
+                if (mainHandItem.getType() == Material.FISHING_ROD && !isWirerod(mainHandItem)) {
+                    return null;
+                }
+                // メインハンドが釣り竿以外ならオフハンドで発動する
+                rod = offHandItem;
+            } else {
+                return null;
+            }
+        } catch (Exception e) {
+            // 手に持っているアイテムがWireRodでないなら何もしない
+            rod = player.getInventory().getItemInHand();
+            if (!isWirerod(rod)) {
+                return null;
+            }
+        }
+
+        return rod;
     }
 
     /**
