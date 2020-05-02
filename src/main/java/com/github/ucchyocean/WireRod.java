@@ -127,16 +127,12 @@ public class WireRod extends JavaPlugin implements Listener {
 
         Iterator<Recipe> it = getServer().recipeIterator();
         while (it.hasNext()) {
-            Recipe recipe = it.next();
-            ItemStack result = recipe.getResult();
-            if (!result.hasItemMeta() || !result.getItemMeta().hasDisplayName()
-                    || !result.getItemMeta().getDisplayName().equals(DISPLAY_NAME)) {
-                continue;
+            if (isWirerod(it.next().getResult())) {
+                it.remove();
+                this.recipe = null;
+                return;
             }
-            it.remove();
         }
-
-        this.recipe = null;
     }
 
     /**
@@ -243,6 +239,15 @@ public class WireRod extends JavaPlugin implements Listener {
         return rod;
     }
 
+    private boolean isWirerod(ItemStack rod) {
+        if (rod != null && rod.getType() == Material.FISHING_ROD) {
+            rod = rod.clone();
+            rod.removeEnchantment(Enchantment.OXYGEN);
+            return rod.isSimilar(item);
+        }
+        return false;
+    }
+
     /**
      * 指定したプレイヤーに、指定したレベルのWirerodを与える
      * 
@@ -277,8 +282,7 @@ public class WireRod extends JavaPlugin implements Listener {
 
         // 手に持っているアイテムがWireRodでないなら何もしない
         ItemStack rod = player.getInventory().getItemInMainHand();
-        if (rod == null || rod.getType() == Material.AIR || !rod.getItemMeta().hasDisplayName()
-                || !rod.getItemMeta().getDisplayName().equals(DISPLAY_NAME)) {
+        if (!isWirerod(rod)) {
             return;
         }
 
