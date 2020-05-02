@@ -16,6 +16,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -48,7 +49,6 @@ import org.bukkit.util.Vector;
  * 
  * @author ucchy
  */
-@SuppressWarnings("deprecation")
 public class WireRod extends JavaPlugin implements Listener {
 
     private static final String NAME = "wirerod";
@@ -116,7 +116,8 @@ public class WireRod extends JavaPlugin implements Listener {
      */
     private void makeRecipe() {
 
-        recipe = new ShapedRecipe(getWirerod(config.getDefaultLevel()));
+        NamespacedKey key = new NamespacedKey(this, DISPLAY_NAME);
+        recipe = new ShapedRecipe(key, getWirerod(config.getDefaultLevel()));
         recipe.shape("  I", " IS", "I S");
         recipe.setIngredient('I', Material.IRON_INGOT);
         recipe.setIngredient('S', Material.STRING);
@@ -200,7 +201,8 @@ public class WireRod extends JavaPlugin implements Listener {
                 return true;
             }
 
-            Player player = getPlayer(args[1]);
+            @SuppressWarnings("deprecation")
+            Player player = Bukkit.getPlayer(args[1]);
             if (player == null) {
                 sender.sendMessage(ChatColor.RED + "Player " + args[1] + " was not found.");
                 return true;
@@ -493,6 +495,7 @@ public class WireRod extends JavaPlugin implements Listener {
      * @param player
      * @return
      */
+    @SuppressWarnings("deprecation")
     public ItemStack getHeldWirerod(Player player) {
         
         ItemStack rod;
@@ -523,15 +526,5 @@ public class WireRod extends JavaPlugin implements Listener {
         }
 
         return rod;
-    }
-
-    /**
-     * 指定した名前のプレイヤーを取得する
-     * 
-     * @param name プレイヤー名
-     * @return プレイヤー
-     */
-    public static Player getPlayer(String name) {
-        return Bukkit.getPlayerExact(name);
     }
 }
