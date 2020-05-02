@@ -6,7 +6,6 @@
 package com.github.ucchyocean;
 
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
 
 import com.github.ucchyocean.ct.ColorTeaming;
 
@@ -19,8 +18,8 @@ public class ColorTeamingBridge {
 
     private ColorTeaming colorteaming;
 
-    public ColorTeamingBridge(Plugin colorteaming) {
-        this.colorteaming = (ColorTeaming)colorteaming;
+    public ColorTeamingBridge(ColorTeaming colorteaming) {
+        this.colorteaming = colorteaming;
     }
 
     public void registerItem(ItemStack item, String name, String displayName) {

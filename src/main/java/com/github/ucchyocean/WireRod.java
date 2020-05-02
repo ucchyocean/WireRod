@@ -9,6 +9,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import com.github.ucchyocean.ct.ColorTeaming;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Effect;
@@ -84,21 +86,29 @@ public class WireRod extends JavaPlugin implements Listener {
             makeRecipe();
         }
 
-        // ColorTeaming のロード
-        Plugin colorteaming = null;
-        if (getServer().getPluginManager().isPluginEnabled("ColorTeaming")) {
-            colorteaming = getServer().getPluginManager().getPlugin("ColorTeaming");
-            String ctversion = colorteaming.getDescription().getVersion();
-            if (isUpperVersion(ctversion, "2.2.5")) {
-                getLogger().info("ColorTeaming was loaded. " + getDescription().getName()
-                        + " is in cooperation with ColorTeaming.");
-                ColorTeamingBridge bridge = new ColorTeamingBridge(colorteaming);
-                bridge.registerItem(item, NAME, DISPLAY_NAME);
-            } else {
-                getLogger().warning("ColorTeaming was too old. The cooperation feature will be disabled.");
-                getLogger().warning("NOTE: Please use ColorTeaming v2.2.5 or later version.");
-            }
+        loadColorTeaming();
+    }
+
+    private void loadColorTeaming() {
+        if (!getServer().getPluginManager().isPluginEnabled("ColorTeaming")) {
+            return;
         }
+
+        Plugin colorteaming = getServer().getPluginManager().getPlugin("ColorTeaming");
+        if (!(colorteaming instanceof ColorTeaming)) {
+            return;
+        }
+
+        String ctversion = colorteaming.getDescription().getVersion();
+        if (!isUpperVersion(ctversion, "2.2.5")) {
+            getLogger().warning("ColorTeaming was too old. The cooperation feature will be disabled.");
+            getLogger().warning("NOTE: Please use ColorTeaming v2.2.5 or later version.");
+            return;
+        }
+
+        getLogger().info(
+                "ColorTeaming was loaded. " + getDescription().getName() + " is in cooperation with ColorTeaming.");
+        new ColorTeamingBridge((ColorTeaming) colorteaming).registerItem(item, NAME, DISPLAY_NAME);
     }
 
     /**
