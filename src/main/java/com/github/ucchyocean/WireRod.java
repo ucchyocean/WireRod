@@ -5,64 +5,28 @@
  */
 package com.github.ucchyocean;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 import com.github.ucchyocean.ct.ColorTeaming;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Effect;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.ComplexEntityPart;
-import org.bukkit.entity.ComplexLivingEntity;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.FishHook;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
-import org.bukkit.event.player.PlayerFishEvent;
-import org.bukkit.event.player.PlayerFishEvent.State;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.Recipe;
-import org.bukkit.inventory.ShapedRecipe;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.util.BlockIterator;
-import org.bukkit.util.Vector;
 
 /**
  * ワイヤロッドプラグイン
  * 
  * @author ucchy
  */
-public class WireRod extends JavaPlugin implements Listener {
+public class WireRod extends JavaPlugin {
 
     private static final String NAME = "wirerod";
-    private static final String DISPLAY_NAME = NAME;
 
-    private static final String PROTECT_FALL_META_NAME = "wirerodfallprotect";
+    private static WireRod instance;
 
-    protected static final int MAX_LEVEL = 20;
-
-    protected static WireRod instance;
-
-    private ItemStack item;
     private WireRodConfig config;
-    private ShapedRecipe recipe;
 
     /**
      * プラグインが有効になったときに呼び出されるメソッド
@@ -72,18 +36,12 @@ public class WireRod extends JavaPlugin implements Listener {
     public void onEnable() {
 
         instance = this;
-
         config = new WireRodConfig(this);
 
-        getServer().getPluginManager().registerEvents(this, this);
-
-        item = new ItemStack(Material.FISHING_ROD, 1);
-        ItemMeta wirerodMeta = item.getItemMeta();
-        wirerodMeta.setDisplayName(DISPLAY_NAME);
-        item.setItemMeta(wirerodMeta);
+        getServer().getPluginManager().registerEvents(new WireRodListener(config), this);
 
         if (config.isEnableCraft()) {
-            makeRecipe();
+            WireRodUtil.addRecipe();
         }
 
         loadColorTeaming();
@@ -108,32 +66,20 @@ public class WireRod extends JavaPlugin implements Listener {
 
         getLogger().info(
                 "ColorTeaming was loaded. " + getDescription().getName() + " is in cooperation with ColorTeaming.");
-        new ColorTeamingBridge((ColorTeaming) colorteaming).registerItem(item, NAME, DISPLAY_NAME);
+        new ColorTeamingBridge((ColorTeaming) colorteaming)
+                .registerItem(WireRodUtil.getWireRod(0), NAME, WireRodUtil.DISPLAY_NAME);
     }
 
-    /**
-     * レシピを登録する
-     */
-    private void makeRecipe() {
-
-        NamespacedKey key = new NamespacedKey(this, DISPLAY_NAME);
-        recipe = new ShapedRecipe(key, getWirerod(config.getDefaultLevel()));
-        recipe.shape("  I", " IS", "I S");
-        recipe.setIngredient('I', Material.IRON_INGOT);
-        recipe.setIngredient('S', Material.STRING);
-        getServer().addRecipe(recipe);
-    }
-
-    private void removeRecipe() {
-
-        Iterator<Recipe> it = getServer().recipeIterator();
-        while (it.hasNext()) {
-            if (isWirerod(it.next().getResult())) {
-                it.remove();
-                this.recipe = null;
-                return;
-            }
+    static WireRod getInstance() {
+        if (instance == null) {
+            instance = JavaPlugin.getPlugin(WireRod.class);
         }
+
+        return instance;
+    }
+
+    WireRodConfig getWireRodConfig() {
+        return config;
     }
 
     /**
@@ -159,10 +105,10 @@ public class WireRod extends JavaPlugin implements Listener {
             // コンフィグ再読込
             config.reloadConfig();
 
-            if (recipe == null && config.isEnableCraft()) {
-                makeRecipe();
-            } else if (recipe != null && !config.isEnableCraft()) {
-                removeRecipe();
+            if (!WireRodUtil.isWireRodRecipeSet() && config.isEnableCraft()) {
+                WireRodUtil.addRecipe();
+            } else if (WireRodUtil.isWireRodRecipeSet() && !config.isEnableCraft()) {
+                WireRodUtil.removeRecipe();
             }
 
             sender.sendMessage(ChatColor.GREEN + "WireRod configuration was reloaded!");
@@ -189,7 +135,7 @@ public class WireRod extends JavaPlugin implements Listener {
                 level = Integer.parseInt(args[1]);
             }
 
-            giveWirerod(player, level);
+            WireRodUtil.giveWireRod(player, level);
 
             return true;
         }
@@ -201,7 +147,6 @@ public class WireRod extends JavaPlugin implements Listener {
                 return true;
             }
 
-            @SuppressWarnings("deprecation")
             Player player = Bukkit.getPlayer(args[1]);
             if (player == null) {
                 sender.sendMessage(ChatColor.RED + "Player " + args[1] + " was not found.");
@@ -213,7 +158,7 @@ public class WireRod extends JavaPlugin implements Listener {
                 level = Integer.parseInt(args[2]);
             }
 
-            giveWirerod(player, level);
+            WireRodUtil.giveWireRod(player, level);
 
             return true;
         }
@@ -221,225 +166,6 @@ public class WireRod extends JavaPlugin implements Listener {
         return false;
     }
 
-    /**
-     * 指定したプレイヤーに、指定したレベルのWirerodを取得する
-     * 
-     * @param level レベル
-     */
-    private ItemStack getWirerod(int level) {
-
-        ItemStack rod = this.item.clone();
-
-        if (level < 1) {
-            level = 1;
-        } else if (level > MAX_LEVEL) {
-            level = MAX_LEVEL;
-        }
-
-        rod.addUnsafeEnchantment(Enchantment.OXYGEN, level);
-
-        return rod;
-    }
-
-    private boolean isWirerod(ItemStack rod) {
-        if (rod != null && rod.getType() == Material.FISHING_ROD) {
-            rod = rod.clone();
-            rod.removeEnchantment(Enchantment.OXYGEN);
-            return rod.isSimilar(item);
-        }
-        return false;
-    }
-
-    /**
-     * 指定したプレイヤーに、指定したレベルのWirerodを与える
-     * 
-     * @param player プレイヤー
-     * @param level  レベル
-     */
-    private void giveWirerod(Player player, int level) {
-
-        ItemStack rod = getWirerod(level);
-        ItemStack temp = player.getInventory().getItemInMainHand();
-        player.getInventory().setItemInMainHand(rod);
-        if (temp != null) {
-            player.getInventory().addItem(temp);
-        }
-    }
-
-    /**
-     * Wirerodの針を投げたり、針がかかったときに呼び出されるメソッド
-     * 
-     * @param event
-     */
-    @EventHandler
-    public void onHook(PlayerFishEvent event) {
-
-        final Player player = event.getPlayer();
-        final FishHook hook = event.getHook();
-
-        // パーミッションが無いなら何もしない
-        if (!player.hasPermission("wirerod.action")) {
-            return;
-        }
-
-        // 手に持っているアイテムがWireRodでないなら何もしない
-        ItemStack rod = getHeldWirerod(player);
-        if (rod == null) {
-            return;
-        }
-
-        // 水中呼吸エンチャントがついていないなら何もしない
-        if (!rod.containsEnchantment(Enchantment.OXYGEN)) {
-            return;
-        }
-
-        // 針を投げるときの処理
-        if (event.getState() == State.FISHING) {
-
-            // 向いている方向のブロックを取得し、その中にフックをワープさせる
-            Location target = hookTargetBlockOrLivingEntity(player, hook, config.getWireRange());
-            if (target == null) {
-                player.sendMessage(ChatColor.RED + "too far!!");
-                event.setCancelled(true);
-                return;
-            }
-
-            // フックにメタデータを入れる
-            hook.setMetadata(NAME, new FixedMetadataValue(this, true));
-
-            // 刺さった場所にエフェクトを発生させる
-            hook.getWorld().playEffect(hook.getLocation(), Effect.STEP_SOUND, 8);
-            return;
-        }
-
-        // 針をひっぱるとき、つまり
-        // 魚がかかった状態、魚を釣っている状態、竿を投げた状態以外の場合の処理
-        if (event.getState() != State.CAUGHT_FISH && event.getState() != State.BITE) {
-
-            // メタデータが入っていないなら無視する
-            if (!hook.hasMetadata(NAME)) {
-                return;
-            }
-
-            // ひっかかっているのは自分なら、2ダメージ(1ハート)を与える
-            if (event.getCaught() != null && event.getCaught().equals(player)) {
-                player.damage(2F, player);
-                return;
-            }
-
-            Location eLoc = player.getEyeLocation();
-
-            // ロッドと、そのレベルを取得
-            int level = config.getDefaultLevel();
-            if (rod.containsEnchantment(Enchantment.OXYGEN)) {
-                level = rod.getEnchantmentLevel(Enchantment.OXYGEN);
-            }
-
-            // 針との距離と方向を調べる
-            Location hookLoc = hook.getLocation();
-            Location baseLoc = player.getLocation();
-            Vector vector = hook.getLocation().subtract(baseLoc).toVector().normalize();
-
-            // 針との距離で、飛び出す力を算出する
-            double bonus = (hookLoc.distance(baseLoc) / 30.0 * config.getDistanceBonusRatio()) + 1.0;
-            double power = level * bonus / 2;
-            if (power > 10.0) {
-                power = 10.0;
-            }
-
-            // 飛翔
-            player.setVelocity(vector.multiply(power));
-
-            // 落下ダメージ保護を加える
-            if (config.isProtectFallDamage()) {
-                player.setMetadata(PROTECT_FALL_META_NAME, new FixedMetadataValue(this, true));
-            }
-
-            // エフェクト
-            player.getWorld().playEffect(eLoc, Effect.POTION_BREAK, 22);
-            player.getWorld().playEffect(eLoc, Effect.POTION_BREAK, 22);
-        }
-    }
-
-    /**
-     * エンティティがダメージを受けたときのイベント
-     * 
-     * @param event
-     */
-    @EventHandler
-    public void onDamage(EntityDamageEvent event) {
-
-        // プレイヤーの被ダメージイベントで、落下ダメージで、
-        // ダメージ保護用のメタデータを持っているなら、ダメージから保護する
-        if (event.getEntity() instanceof Player && event.getCause() == DamageCause.FALL
-                && event.getEntity().hasMetadata(PROTECT_FALL_META_NAME)) {
-
-            event.setCancelled(true);
-            event.getEntity().removeMetadata(PROTECT_FALL_META_NAME, this);
-        }
-    }
-
-    /**
-     * プレイヤーが向いている方向にあるブロックまたはLivingEntityを取得し、 釣り針をそこに移動する。
-     * 
-     * @param player プレイヤー
-     * @param hook   釣り針
-     * @param size   取得する最大距離、140以上を指定しないこと
-     * @return プレイヤーが向いている方向にあるブロックまたはLivingEntityのLocation、 取得できない場合はnullがかえされる
-     */
-    private static Location hookTargetBlockOrLivingEntity(Player player, FishHook hook, int range) {
-
-        // ターゲット先周辺のエンティティを取得する
-        Location center = player.getLocation().clone();
-        double halfrange = (double) range / 2.0;
-        center.add(center.getDirection().multiply(halfrange));
-        Entity orb = center.getWorld().spawnEntity(center, EntityType.EXPERIENCE_ORB);
-        List<Entity> targets = new ArrayList<Entity>();
-        for (Entity e : orb.getNearbyEntities(halfrange, halfrange, halfrange)) {
-            if (e instanceof LivingEntity && !player.equals(e)) {
-                targets.add(e);
-            } else if (e instanceof ComplexLivingEntity) {
-                for (ComplexEntityPart part : ((ComplexLivingEntity) e).getParts()) {
-                    targets.add(part);
-                }
-            }
-        }
-        orb.remove();
-
-        // 視線の先にあるブロックを取得する
-        BlockIterator it = new BlockIterator(player, range);
-
-        while (it.hasNext()) {
-            Block block = it.next();
-
-            if (block.getType() != Material.AIR) {
-                // ブロックが見つかった、針を中にワープさせる
-                Location location = block.getLocation().add(0.5, 0.5, 0.5);
-                hook.teleport(location);
-                return location;
-
-            }
-
-            // 位置が一致するLivingEntityがないか探す
-            for (Entity e : targets) {
-                if (block.getLocation().distanceSquared(e.getLocation()) > 4.0) {
-                    continue;
-                }
-                Location location = e.getLocation();
-
-                // LivingEntityが見つかった、針を載せる
-                hook.teleport(location);
-                e.addPassenger(hook);
-                if (e instanceof LivingEntity) {
-                    ((LivingEntity) e).damage(0F, player);
-                } else if (e instanceof ComplexEntityPart) {
-                    ((ComplexEntityPart) e).getParent().damage(0F, player);
-                }
-                return location;
-            }
-        }
-        return null;
-    }
 
     /**
      * 指定されたバージョンが、基準より新しいバージョンかどうかを確認する<br>
@@ -486,45 +212,5 @@ public class WireRod extends JavaPlugin implements Listener {
         } else {
             return false;
         }
-    }
-
-    /**
-     * 両手のどちらかにあるワイヤーロッドを取得する。
-     * Minecraftのバージョン1.9以前で、片手にしかアイテムを持てない場合は昔のメソッドを使う。
-     * 
-     * @param player
-     * @return
-     */
-    @SuppressWarnings("deprecation")
-    public ItemStack getHeldWirerod(Player player) {
-        
-        ItemStack rod;
-        try {
-            ItemStack offHandItem = player.getInventory().getItemInOffHand();
-            ItemStack mainHandItem = player.getInventory().getItemInMainHand();
-    
-            // メインハンドにワイヤーロッドがある
-            if (isWirerod(mainHandItem)) {
-                rod = mainHandItem;
-            // オフハンドにワイヤーロッドがある
-            } else if (isWirerod(offHandItem)) {
-                // メインハンドが釣り竿で、その釣り竿がワイヤーロッドでないなら終了
-                if (mainHandItem.getType() == Material.FISHING_ROD && !isWirerod(mainHandItem)) {
-                    return null;
-                }
-                // メインハンドが釣り竿以外ならオフハンドで発動する
-                rod = offHandItem;
-            } else {
-                return null;
-            }
-        } catch (Exception e) {
-            // 手に持っているアイテムがWireRodでないなら何もしない
-            rod = player.getInventory().getItemInHand();
-            if (!isWirerod(rod)) {
-                return null;
-            }
-        }
-
-        return rod;
     }
 }

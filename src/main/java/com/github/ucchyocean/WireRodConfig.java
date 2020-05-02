@@ -40,19 +40,10 @@ public class WireRodConfig {
 
         FileConfiguration conf = parent.getConfig();
 
-        defaultLevel = conf.getInt("defaultLevel", 4);
-        if ( defaultLevel < 1 ) {
-            defaultLevel = 1;
-        } else if ( defaultLevel > WireRod.MAX_LEVEL ) {
-            defaultLevel = WireRod.MAX_LEVEL;
-        }
-
+        defaultLevel = Math.max(1, Math.min(WireRodUtil.MAX_LEVEL, conf.getInt("defaultLevel", 4)));
         wireRange = conf.getInt("wireRange", 30);
-
         distanceBonusRatio = conf.getDouble("distanceBonusRatio", 1.0);
-
         protectFallDamage = conf.getBoolean("protectFallDamage", true);
-
         enableCraft = conf.getBoolean("enableCraft", true);
     }
 
