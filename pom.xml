@@ -2,8 +2,8 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.github.ucchyocean</groupId>
   <artifactId>WireRod</artifactId>
-  <version>3.2.0</version>
-  <description>Shooter is the magic battle item.</description>
+  <version>3.2.1</version>
+  <description>Magic wire-action item.</description>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -66,7 +66,7 @@
     <repository>
       <id>spigot-repo</id>
       <name>Spigot Maven Repository</name>
-      <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+      <url>https://hub.spigotmc.org/nexus/content/groups/public</url>
     </repository>
   </repositories>
 

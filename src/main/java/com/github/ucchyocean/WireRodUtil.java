@@ -16,7 +16,7 @@ final class WireRodUtil {
     static final int MAX_LEVEL = 20;
 
     private static boolean isWireRodRecipeSet = false;
-    
+
     /**
      * ワイヤーロッドのレシピを登録する
      */
@@ -34,15 +34,15 @@ final class WireRodUtil {
         while (it.hasNext()) {
             if (isWireRod(it.next().getResult())) {
                 it.remove();
+                isWireRodRecipeSet = false;
                 return;
             }
         }
-        isWireRodRecipeSet = false;
     }
 
     /**
      * ワイヤーロッドのレシピが登録されているかどうかを調べる。
-     * 
+     *
      * @return ワイヤーロッドのレシピが登録されているかどうか
      */
     static boolean isWireRodRecipeSet() {
@@ -51,7 +51,7 @@ final class WireRodUtil {
 
     /**
      * 指定したレベルのWirerodを取得する
-     * 
+     *
      * @param level レベル
      */
     static ItemStack getWireRod(int level) {
@@ -67,7 +67,7 @@ final class WireRodUtil {
 
     /**
      * 渡したアイテムがワイヤーロッドか調べる。
-     * 
+     *
      * @param rod アイテム
      * @return rodがワイヤーロッドならtrue
      */
@@ -81,7 +81,7 @@ final class WireRodUtil {
 
     /**
      * 指定したプレイヤーに、指定したレベルのWirerodを与える
-     * 
+     *
      * @param player プレイヤー
      * @param level  レベル
      */
@@ -90,7 +90,7 @@ final class WireRodUtil {
 
         ItemStack temp = Compatibles.getItemInMainHand(player);
         Compatibles.setItemInMainHand(player, rod);
-        
+
         if (temp != null) {
             player.getInventory().addItem(temp);
         }

@@ -15,7 +15,7 @@ import org.bukkit.inventory.ShapedRecipe;
  */
 @SuppressWarnings("deprecation")
 final class Compatibles {
-    
+
     static ShapedRecipe createWireRodRecipe(int defualtLevel) {
         ShapedRecipe recipe;
         ItemStack rod = WireRodUtil.getWireRod(defualtLevel);
@@ -51,24 +51,24 @@ final class Compatibles {
     /**
      * 両手のどちらかにあるワイヤーロッドを取得する。
      * Minecraftのバージョン1.9以前で、片手にしかアイテムを持てない場合は昔のメソッドを使う。
-     * 
+     *
      * @param player
      * @return
      */
     static ItemStack getHoldingWireRod(Player player) {
-        
+
         ItemStack rod;
         try {
             ItemStack offHandItem = player.getInventory().getItemInOffHand();
             ItemStack mainHandItem = player.getInventory().getItemInMainHand();
-    
+
             // メインハンドにワイヤーロッドがある
             if (WireRodUtil.isWireRod(mainHandItem)) {
                 rod = mainHandItem;
             // オフハンドにワイヤーロッドがある
             } else if (WireRodUtil.isWireRod(offHandItem)) {
-                // メインハンドが釣り竿で、その釣り竿がワイヤーロッドでないなら終了
-                if (mainHandItem.getType() == Material.FISHING_ROD && !WireRodUtil.isWireRod(mainHandItem)) {
+                // メインハンドが釣り竿でないなら終了
+                if (mainHandItem.getType() == Material.FISHING_ROD) {
                     return null;
                 }
                 // メインハンドが釣り竿以外ならオフハンドで発動する
@@ -88,10 +88,10 @@ final class Compatibles {
     }
 
     /**
-     * {@code isPullHookState} を作るついでにこちらも作成。
-     * 
+     * 釣り竿を投げる動作をしている場合のイベント発火かどうかを調べる。
+     *
      * @param event PlayerFishEvent
-     * @return
+     * @return 釣り竿を投げる動作をしているかどうか
      */
     static boolean isThrowHookState(PlayerFishEvent event) {
         return event.getState() == State.FISHING;
@@ -99,7 +99,7 @@ final class Compatibles {
 
     /**
      * 釣り竿を引く動作をしている場合のイベント発火かどうかを調べる。
-     * 
+     *
      * @param event PlayerFishEvent
      * @return 釣り竿を引く動作をしているかどうか
      */
@@ -115,7 +115,7 @@ final class Compatibles {
     /**
      * {@code addPassenger}メソッドの追加前のバージョンの場合は、一番上に居るモブを取得して{@code setPassenger}を実行する。
      * {@code addPassenger}が使える場合はそのまま使う。
-     * 
+     *
      * @param vehicle 乗られるエンティティ
      * @param passenger 乗るエンティティ
      */
@@ -129,7 +129,7 @@ final class Compatibles {
 
     /**
      * 再帰的に一番上に乗っているモブを取得する。
-     * 
+     *
      * @param vehicle 下に居るモブ
      * @return 一番上のモブ
      */
