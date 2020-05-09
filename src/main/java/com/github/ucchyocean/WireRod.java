@@ -54,6 +54,15 @@ public class WireRod extends JavaPlugin {
         }
     }
 
+    /**
+     * プラグインが無効化されたときに呼び出されるメソッド
+     *
+     * @see org.bukkit.plugin.java.JavaPlugin#onEnable()
+     */
+    public void onDisable() {
+        WireRodUtil.removeRecipe();
+    }
+
     static WireRod getInstance() {
         if (instance == null) {
             instance = JavaPlugin.getPlugin(WireRod.class);
