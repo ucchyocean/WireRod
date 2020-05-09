@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.github.ucchyocean</groupId>
   <artifactId>WireRod</artifactId>
-  <version>3.2.1</version>
+  <version>3.2.2</version>
   <description>Magic wire-action item.</description>
 
   <properties>
@@ -59,14 +59,9 @@
 
   <repositories>
     <repository>
-      <id>ucchy-github</id>
-      <name>ucchy github repository</name>
-      <url>https://raw.github.com/ucchyocean/mvn-repo/master</url>
-    </repository>
-    <repository>
       <id>spigot-repo</id>
       <name>Spigot Maven Repository</name>
-      <url>https://hub.spigotmc.org/nexus/content/groups/public</url>
+      <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
     </repository>
   </repositories>
 
@@ -75,11 +70,6 @@
       <groupId>org.bukkit</groupId>
       <artifactId>bukkit</artifactId>
       <version>1.15.2-R0.1-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>com.github.ucchyocean</groupId>
-      <artifactId>ColorTeaming</artifactId>
-      <version>2.6.2</version>
     </dependency>
   </dependencies>
 </project>
