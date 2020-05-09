@@ -5,12 +5,17 @@
  */
 package com.github.ucchyocean;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.StringUtil;
 
 /**
  * ワイヤロッドプラグイン
@@ -22,6 +27,15 @@ public class WireRod extends JavaPlugin {
     private static WireRod instance;
 
     private WireRodConfig config;
+
+    private static List<String> LEVEL_COMPLETION = new ArrayList<String>() {
+        private static final long serialVersionUID = 1L;
+        {
+            for (int i = 1; i <= 20; i++) {
+                add(String.valueOf(i));
+            }
+        }
+    };
 
     /**
      * プラグインが有効になったときに呼び出されるメソッド
@@ -134,5 +148,65 @@ public class WireRod extends JavaPlugin {
         }
 
         return false;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> completion = new ArrayList<>();
+        
+        // 権限があるサブコマンドだけ補完する。
+        if (sender.hasPermission("wirerod.reload")) {
+            completion.add("reload");
+        }
+        if (sender.hasPermission("wirerod.get")) {
+            completion.add("get");
+        }
+        if (sender.hasPermission("wirerod.give")) {
+            completion.add("give");
+        }
+
+        if (args.length == 1) {
+            return StringUtil.copyPartialMatches(args[0], completion, new ArrayList<>());
+        }
+
+        String subcommand = args[0].toLowerCase(Locale.ROOT);
+
+        if (subcommand.equals("get")) {
+            return onTabCompleteGet(sender, args);
+        }
+        if (subcommand.equals("give")) {
+            return onTabCompleteGive(sender, args);
+        }
+
+        return new ArrayList<>();
+    }
+
+    private List<String> onTabCompleteGet(CommandSender sender, String[] args) {
+        if (args.length == 2) {
+            return StringUtil.copyPartialMatches(args[1], LEVEL_COMPLETION, new ArrayList<>());
+        }
+
+        return new ArrayList<>();
+    }
+
+    private List<String> onTabCompleteGive(CommandSender sender, String[] args) {
+        List<String> players = new ArrayList<>();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            players.add(player.getName());
+        }
+
+        if (args.length == 2) {
+            return StringUtil.copyPartialMatches(args[1], players, new ArrayList<>());
+        }
+
+        if (!players.contains(args[1])) {
+            return new ArrayList<>();
+        }
+
+        if (args.length == 3) {
+            return StringUtil.copyPartialMatches(args[2], LEVEL_COMPLETION, new ArrayList<>());
+        }
+
+        return new ArrayList<>();
     }
 }
